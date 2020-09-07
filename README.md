@@ -16,9 +16,9 @@ Once all the Blinks are white, they are ready to start. Pick one Blink that you 
 When it's your turn, you manage the entire squad. Each turn, due to steam powered engine limitations, you only have enough power to fire one of your A-Salt cannons, so choose wisely!
 
   On your turn you can:
-  * Fire a normal shot
-    * Tapping an active piece will initiate the attack animation. You'll see the cannon barrel change in (white) brightness in a regular pattern. Each brightness represents the range you wish to fire on your opponent (The brighter, the further you'll fire). Tapping again during this sequence will launch a  normal shot which will do one point of damage to your opponents slug at that range. 
-  * Attempt a critical shot
+  * Fire a normal shot (ends your turn)
+    * Tapping an active piece will initiate the attack sequence. You'll see the cannon barrel change in (white) brightness in a regular pattern. Each brightness represents the range you wish to fire on your opponent (The brighter, the further you'll fire). Tapping again during this sequence will launch a  normal shot which will do one point of damage to your opponents slug at that range. 
+  * Attempt a critical shot (ends your turn)
     * Every third sequence of the attack animation will have an orange and MUCH faster sequence that if you tap during it, it will launch a critical heavy blow to your opponent doing TWO points of damage! Be careful as these are much harder to time correctly!
   * Heal a segment
     * Each segment of your slug has only 4 total health to begin with. As you take damage, your attack sequences become much more difficult to manage as your cannons become damaged and less accurate! Not to worry, if one of your segments if heavily damaged (only 1 or 2 health remaining), you can long press a piece during your turn to heal them. This action can only be done ONCE per game AND this action permanently removes the ability for that cannon to fire critical shots. Healing keeps you alive and your gun more accurate, but it keeps it from doing heavy damage, so use this ability wisely.

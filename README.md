@@ -2,5 +2,5 @@
 
 Number of Blinks | Number of Players | Duration 
 ------------ | ------------- | -------------
-Content from cell 1 | Content from cell 2
-Content in the first column | Content in the second column
+3-15  | 2 | 5-15 min
+1 Mushroom + up to 7 on either side| 

@@ -1,6 +1,7 @@
 #define NORMAL_ATTACK_DURATION 100
 #define TURN_DURATION_PER_PLAYER 500
 #define ATTACK_ANIM_DURATION 100
+#define LIGHT_BLUE makeColorRGB(173,216,230)
 
 enum dataMode{
   ACK_IDLE = 0,
@@ -82,9 +83,9 @@ void loop() {
     setUpGame();
   }
 
-  if (buttonDoubleClicked()){
-    sendToggle(toCenterFace, 7, true);
-  }
+//  if (buttonDoubleClicked()){
+//    sendToggle(toCenterFace, 7, true);
+//  }
 
   if (buttonLongPressed() && !hasWoken() && isActive){
     //begin test if game can start
@@ -208,7 +209,7 @@ void loop() {
         if (playerType == MUSHROOM){
           setFaceColor(startFace, GREEN);
         }else{
-          setFaceColor(startFace, isActive?ORANGE:OFF);
+          setFaceColor(startFace, isActive?LIGHT_BLUE:OFF);
         }
         attackAnimTimer.set(ATTACK_ANIM_DURATION);
       }else{
@@ -253,6 +254,7 @@ void loop() {
      }
   }
 }
+
 //***Main data switch***
 void parseData(uint8_t data, int faceOfSignal){
     uint8_t inDataMode = data & 3;
@@ -293,15 +295,12 @@ void handleIdle(boolean isOtherAttacking, boolean isFromCenter){
 }
 
 void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter){
-  
+  setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
   if (playerType == MUSHROOM){
       if (headCount == 0){
         //handle win condition
         setFaceColor(isFromCenter?awayFace:toCenterFace, WHITE);
         sendToggle(isFromCenter?awayFace:toCenterFace, 7, true);
-      }else{
-        setValueSentOnFace(ACK_IDLE, toCenterFace);
-        setValueSentOnFace(ACK_IDLE, awayFace);
       }
     }else{
       if (aWinnerIsYou){
@@ -312,6 +311,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
           setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
       }else{
         if (isFromCenter){
+          
           //Using team1Total on non-mushroom to track enemy team size
           team1Total = headCount;
           if(health>0){
@@ -336,6 +336,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
        }
     }
   }
+  //setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
 }
 
 void sendToggle(int face, uint8_t aliveCount, bool aWinnerIsYou){
@@ -344,11 +345,13 @@ void sendToggle(int face, uint8_t aliveCount, bool aWinnerIsYou){
 }
 
 void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
+  setValueSentOnFace(ACK_IDLE, faceOfSignal);
   int oppositeFace = (faceOfSignal+3)%FACE_COUNT;
   if (onWayOut){
     toCenterFace = faceOfSignal;
     awayFace = oppositeFace;
   }
+ 
   if (playerType == MUSHROOM && !onWayOut){
     
     if (faceOfSignal == awayFace){
@@ -360,7 +363,7 @@ void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
         beginGame();
     }
   }else{
-    setValueSentOnFace(ACK_IDLE, faceOfSignal);
+     
     if (onWayOut){
       winPosition = blinkCount;
       setPlayerType(SLUG);
@@ -430,12 +433,12 @@ void gameAnim(Color color){
 void refreshAllFaces(){
   isHit=false;
   
-  setFaceColor((awayFace+1)%FACE_COUNT,health>0?GREEN:RED);
-  setFaceColor((awayFace+2)%FACE_COUNT,health>1?GREEN:RED);
-  setFaceColor((awayFace+4)%FACE_COUNT,health>2?GREEN:RED);
-  setFaceColor((awayFace+5)%FACE_COUNT,health>3?GREEN:RED);
+  setFaceColor((awayFace+1)%FACE_COUNT,health>0?YELLOW:RED);
+  setFaceColor((awayFace+2)%FACE_COUNT,health>1?YELLOW:RED);
+  setFaceColor((awayFace+4)%FACE_COUNT,health>2?YELLOW:RED);
+  setFaceColor((awayFace+5)%FACE_COUNT,health>3?YELLOW:RED);
   
-  setFaceColor(awayFace, isActive?ORANGE:OFF);
+  setFaceColor(awayFace, isActive?LIGHT_BLUE:OFF);
   setFaceColor(toCenterFace, isActive?WHITE:OFF);
 }
 

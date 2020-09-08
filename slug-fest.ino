@@ -16,11 +16,8 @@ enum playerClass{
   UNASSIGNED = 2
 };
 
-Timer attackTimer;
-Timer turnTimer;
-Timer winTimer;
-Timer attackAnimTimer;
-Timer attackStepTimer;
+Timer mainTimer;
+Timer secondaryTimer;
 
 uint8_t playerType = UNASSIGNED;
 uint8_t health = 4;
@@ -28,7 +25,7 @@ uint8_t awayFace, toCenterFace = FACE_COUNT;
 uint8_t animCount = 0, attackTypeCounter;
 
 uint8_t startFace;
-byte holdData;
+uint8_t holdData;
 
 byte team1Total = 0, team2Total, stepRange = 0;
 byte attackStepBrightness = MAX_BRIGHTNESS;
@@ -56,8 +53,8 @@ void loop() {
           uint8_t range = stepRange;
           isAttacking = false;
           stepRange = team1Total-1;
-          attackTimer.set(0);
-          attackStepTimer.set(0);
+          mainTimer.set(0);
+          secondaryTimer.set(0);
           attackStepBrightness = MAX_BRIGHTNESS;
           boolean crit = attackTypeCounter == 2;
           uint8_t dataLoad = (range<<1)+(crit?1:0);
@@ -68,10 +65,10 @@ void loop() {
           }
           setValueSentOnFace((1<<2)+ACK_IDLE, toCenterFace);
           attackTypeCounter = 0;
-          attackTimer.set(NORMAL_ATTACK_DURATION*health*team1Total);
+          mainTimer.set(NORMAL_ATTACK_DURATION*health*team1Total);
           attackStepBrightness = MAX_BRIGHTNESS;
           stepRange = team1Total-1;
-          attackStepTimer.set(NORMAL_ATTACK_DURATION*health);
+          secondaryTimer.set(NORMAL_ATTACK_DURATION*health);
           isAttacking = true;
         }
       }
@@ -83,9 +80,9 @@ void loop() {
     setUpGame();
   }
 
-//  if (buttonDoubleClicked()){
-//    sendToggle(toCenterFace, 7, true);
-//  }
+  if (buttonDoubleClicked()){
+    sendToggle(toCenterFace, 7, true);
+  }
 
   if (buttonLongPressed() && !hasWoken() && isActive){
     //begin test if game can start
@@ -99,15 +96,15 @@ void loop() {
 
   //**START Animations**
   if (isHit){
-    if(attackAnimTimer.isExpired()){
-      attackAnimTimer.set(ATTACK_ANIM_DURATION*2);
+    if(mainTimer.isExpired()){
+      mainTimer.set(ATTACK_ANIM_DURATION*2);
     }
     gameAnim((holdData&4)==4?RED:ORANGE);
   }
   
   if (isError){
-    if(attackAnimTimer.isExpired()){
-      attackAnimTimer.set(ATTACK_ANIM_DURATION*2);
+    if(mainTimer.isExpired()){
+      mainTimer.set(ATTACK_ANIM_DURATION*2);
       attackTypeCounter -=1;
     }
     gameAnim(RED);
@@ -117,8 +114,8 @@ void loop() {
     }
   }
   if (isHealing){
-    if(attackAnimTimer.isExpired()){
-      attackAnimTimer.set(ATTACK_ANIM_DURATION*5);
+    if(mainTimer.isExpired()){
+      mainTimer.set(ATTACK_ANIM_DURATION*5);
       attackTypeCounter -=1;
     }
     gameAnim(GREEN);
@@ -133,7 +130,7 @@ void loop() {
  if(isWinning){
     if (winPassCount < 3){
       bool endOfLine = (isValueReceivedOnFaceExpired(awayFace) || (winPassCount<2 && startFace == awayFace && winPosition==1));
-      if (winTimer.isExpired()){
+      if (mainTimer.isExpired()){
         if (!endOfLine && winAnimCount == 4){
           winAnimCount=7;
         }
@@ -171,63 +168,33 @@ void loop() {
            winAnimCount = 0;
        }else{
         winAnimCount+=1;
-        winTimer.set(ATTACK_ANIM_DURATION/5);
+        mainTimer.set(ATTACK_ANIM_DURATION/5);
        }
       }
     }
  }
   
-  if (turnTimer.isExpired()){
-    if(playerType == MUSHROOM && isAttacking){
+  
+ if(playerType == MUSHROOM && isAttacking){
+   if (mainTimer.isExpired()){
       //toggleTurns
       handleNewTurn(false);
       isAttacking = false;
     }
   }
 
-  if(attackTimer.isExpired()) {
-     if(isAttacking && playerType != MUSHROOM) {
+ 
+ if(isAttacking && playerType != MUSHROOM) {
+   if(mainTimer.isExpired()) {
        if(!hasHealed && attackTypeCounter<2){
          attackTypeCounter +=1;
        }else{
           attackTypeCounter = 0;
        }
        uint8_t critMod = (attackTypeCounter == 2)? 2:1;
-       attackTimer.set((NORMAL_ATTACK_DURATION*health*team1Total)/critMod);
+       mainTimer.set((NORMAL_ATTACK_DURATION*health*team1Total)/critMod);
      }
-  }
-
-  if (animCount>0){
-    if (attackAnimTimer.isExpired()){
-      animCount-=1;
-      uint8_t oppositeFace = (startFace+3)%FACE_COUNT;
-      if (animCount==2){
-        setFaceColor(startFace, YELLOW);
-        attackAnimTimer.set(ATTACK_ANIM_DURATION);
-      }else if(animCount==1){
-        setFaceColor(oppositeFace,YELLOW);
-        if (playerType == MUSHROOM){
-          setFaceColor(startFace, GREEN);
-        }else{
-          setFaceColor(startFace, isActive?LIGHT_BLUE:OFF);
-        }
-        attackAnimTimer.set(ATTACK_ANIM_DURATION);
-      }else{
-        if (playerType == MUSHROOM){
-          setFaceColor(oppositeFace, RED);
-          isAttacking=true;
-          turnTimer.set(2000+(TURN_DURATION_PER_PLAYER*(startFace==awayFace?team1Total:team2Total)));
-        }else{
-          setFaceColor((startFace+3)%FACE_COUNT, isActive?WHITE:OFF);
-        }
-        setValueSentOnFace(ACK_IDLE, startFace);
-        setValueSentOnFace(holdData, oppositeFace);
-      }
-    }
-  }
-  
-  if(attackStepTimer.isExpired()) {
-    if(isAttacking && playerType != MUSHROOM) {
+     if(secondaryTimer.isExpired()) {
       if(stepRange>0) {
         attackStepBrightness -= (MAX_BRIGHTNESS/team1Total);
         stepRange -=1;
@@ -237,10 +204,38 @@ void loop() {
         stepRange = team1Total-1;
       }
       uint8_t critMod = (!hasHealed && attackTypeCounter == 2)? 2:1;
-      attackStepTimer.set((NORMAL_ATTACK_DURATION*health)/critMod);
+      secondaryTimer.set((NORMAL_ATTACK_DURATION*health)/critMod);
     }
-    
- }
+  }
+
+  if (animCount>0){
+    if (secondaryTimer.isExpired()){
+      animCount-=1;
+      uint8_t oppositeFace = (startFace+3)%FACE_COUNT;
+      if (animCount==2){
+        setFaceColor(startFace, YELLOW);
+        secondaryTimer.set(ATTACK_ANIM_DURATION);
+      }else if(animCount==1){
+        setFaceColor(oppositeFace,YELLOW);
+        if (playerType == MUSHROOM){
+          setFaceColor(startFace, GREEN);
+        }else{
+          setFaceColor(startFace, isActive?LIGHT_BLUE:OFF);
+        }
+        secondaryTimer.set(ATTACK_ANIM_DURATION);
+      }else{
+        if (playerType == MUSHROOM){
+          setFaceColor(oppositeFace, RED);
+          isAttacking=true;
+          mainTimer.set(2000+(TURN_DURATION_PER_PLAYER*(startFace==awayFace?team1Total:team2Total)));
+        }else{
+          setFaceColor((startFace+3)%FACE_COUNT, isActive?WHITE:OFF);
+        }
+        setValueSentOnFace(ACK_IDLE, startFace);
+        setValueSentOnFace(holdData, oppositeFace);
+      }
+    }
+  }
  
  if(isAttacking && playerType != MUSHROOM){
     setFaceColor(toCenterFace, dim((!hasHealed && attackTypeCounter == 2)?RED:WHITE, attackStepBrightness));
@@ -427,7 +422,7 @@ void youWon(){
 }
 
 void gameAnim(Color color){
-  setColor(dim(color, MAX_BRIGHTNESS - attackAnimTimer.getRemaining()));
+  setColor(dim(color, MAX_BRIGHTNESS - mainTimer.getRemaining()));
 }
 
 void refreshAllFaces(){

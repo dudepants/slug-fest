@@ -26,4 +26,4 @@ When it's your turn, you manage the entire squad. Each turn, due to steam powere
     * If you started an attack sequence on a piece and you would prefer to fire from another cannon (perhaps you didn't realize one was damaged) you can tap on another piece to  redirect the A-Salt cannon priming sequence.
     
 ## Winning
-If you manage to reduce each of your opponents segments to 0 health, you win and the spoils of war and the glorious Mushroom are yours for the taking! Tales of this battle will echo through eternity! Also, you can just triple click to start another game :) 
+If you manage to reduce each of your opponents segments to 0 health, you win and the spoils of war and the glorious Mushroom are yours for the taking! Tales of this battle will echo through eternity! Also, you can just triple click to play again :) 

@@ -80,9 +80,9 @@ void loop() {
     setUpGame();
   }
 
-  if (buttonDoubleClicked()){
-    sendToggle(toCenterFace, 7, true);
-  }
+//  if (buttonDoubleClicked()){
+//    sendToggle(toCenterFace, 7, true);
+//  }
 
   if (buttonLongPressed() && !hasWoken() && isActive){
     //begin test if game can start
@@ -274,9 +274,11 @@ void parseData(uint8_t data, int faceOfSignal){
 
 //***BEGIN Data Handlers***
 void handleIdle(boolean isOtherAttacking, boolean isFromCenter){
+  
   if (isOtherAttacking){
-    isAttacking=false;
     if (playerType != MUSHROOM){
+      isAttacking=false;
+      refreshAllFaces();
       if(isFromCenter){
         if (!isValueReceivedOnFaceExpired(awayFace)){
           setValueSentOnFace((1<<2)+ACK_IDLE, awayFace);
@@ -317,7 +319,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
           refreshAllFaces();
           if (!isValueReceivedOnFaceExpired(awayFace)){
             sendToggle(awayFace, headCount, false);
-            setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
+            //setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
           }else{
             sendToggle(toCenterFace, (health>0)?1:0, false);
           }
@@ -327,11 +329,10 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
               headCount+=1;
           }
           sendToggle(toCenterFace, headCount, false);
-          setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
+          //setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
        }
     }
   }
-  //setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
 }
 
 void sendToggle(int face, uint8_t aliveCount, bool aWinnerIsYou){
@@ -428,10 +429,10 @@ void gameAnim(Color color){
 void refreshAllFaces(){
   isHit=false;
   
-  setFaceColor((awayFace+1)%FACE_COUNT,health>0?YELLOW:RED);
-  setFaceColor((awayFace+2)%FACE_COUNT,health>1?YELLOW:RED);
-  setFaceColor((awayFace+4)%FACE_COUNT,health>2?YELLOW:RED);
-  setFaceColor((awayFace+5)%FACE_COUNT,health>3?YELLOW:RED);
+  setFaceColor((awayFace+1)%FACE_COUNT,health>0?GREEN:RED);
+  setFaceColor((awayFace+2)%FACE_COUNT,health>1?GREEN:RED);
+  setFaceColor((awayFace+4)%FACE_COUNT,health>2?GREEN:RED);
+  setFaceColor((awayFace+5)%FACE_COUNT,health>3?GREEN:RED);
   
   setFaceColor(awayFace, isActive?LIGHT_BLUE:OFF);
   setFaceColor(toCenterFace, isActive?WHITE:OFF);

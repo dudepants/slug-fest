@@ -1,7 +1,15 @@
-#define NORMAL_ATTACK_DURATION 100
+#define NORMAL_ATTACK_DURATION 150
 #define TURN_DURATION_PER_PLAYER 500
 #define ATTACK_ANIM_DURATION 100
-#define LIGHT_BLUE makeColorRGB(173,216,230)
+#define ANIM_DURATION_SHORT 20
+#define ANIM_DURATION_MID 200
+#define ANIM_DURATION_LONG 500
+#define PULSE_TIMER_PER_HEALTH 637
+
+byte faceOffsetArray[] = { 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5 };
+#define CW_FROM_FACE(f, amt) faceOffsetArray[(f) + (amt)]
+#define CCW_FROM_FACE(f, amt) faceOffsetArray[6 + (f) - (amt)]
+#define OPPOSITE_FACE(f) CW_FROM_FACE((f), 3)
 
 enum dataMode{
   ACK_IDLE = 0,
@@ -16,8 +24,8 @@ enum playerClass{
   UNASSIGNED = 2
 };
 
-Timer mainTimer;
-Timer secondaryTimer;
+//some of these run simulataneously (plus consolodating doesn't seem to help memory much)
+Timer pulseTimer, turnTimer, mainTimer, stepTimer;
 
 uint8_t playerType = UNASSIGNED;
 uint8_t health = 4;
@@ -25,53 +33,47 @@ uint8_t awayFace, toCenterFace = FACE_COUNT;
 uint8_t animCount = 0, attackTypeCounter;
 
 uint8_t startFace;
-uint8_t holdData;
+byte holdData;
 
-byte team1Total = 0, team2Total, stepRange = 0;
+byte team1AndOpponentTotal = 0, team2Total, stepRange = 0;
 byte attackStepBrightness = MAX_BRIGHTNESS;
 
 uint8_t winPassCount = 0, winAnimCount = 0;
 uint8_t winPosition = 0;
 
 bool hasHealed;
-bool isActive, isAttacking, isHit, isError, isHealing, isWinning;
+bool isActive, isAttacking, isHit, isError, isHealing, isWinning, hasWon;
 bool team1Turn = true;
 
 void setup() {
-   setColor(WHITE);
+  setColor(WHITE);
 }
 
 void loop() {
-  //**Button clicks**
-  if (buttonSingleClicked() && !hasWoken()){
-    //if active
+  //**BEGIN Button clicks**
+  if (buttonSingleClicked() && !hasWoken() && isActive && health >0){
     //attack sequence
-    if (isActive){
-      if (health >0){// && playerType == SLUG){
-        //change this later
-        if (isAttacking){
-          uint8_t range = stepRange;
-          isAttacking = false;
-          stepRange = team1Total-1;
-          mainTimer.set(0);
-          secondaryTimer.set(0);
-          attackStepBrightness = MAX_BRIGHTNESS;
-          boolean crit = attackTypeCounter == 2;
-          uint8_t dataLoad = (range<<1)+(crit?1:0);
-          setValueSentOnFace((dataLoad<<2)+SLUG_DATA, toCenterFace);
-        }else{
-          if (!isValueReceivedOnFaceExpired(awayFace)){
-            setValueSentOnFace((1<<2)+ACK_IDLE, awayFace);
-          }
-          setValueSentOnFace((1<<2)+ACK_IDLE, toCenterFace);
-          attackTypeCounter = 0;
-          mainTimer.set(NORMAL_ATTACK_DURATION*health*team1Total);
-          attackStepBrightness = MAX_BRIGHTNESS;
-          stepRange = team1Total-1;
-          secondaryTimer.set(NORMAL_ATTACK_DURATION*health);
-          isAttacking = true;
-        }
+    attackStepBrightness = MAX_BRIGHTNESS;
+    if (isAttacking){
+      uint8_t range = stepRange;
+      isAttacking = false;
+      mainTimer.set(0);
+      stepTimer.set(0);
+      stepRange = team1AndOpponentTotal-1;
+      boolean crit = attackTypeCounter == 2;
+      uint8_t dataLoad = (range<<1)+(crit?1:0);
+      setValueSentOnFace((dataLoad<<2)+SLUG_DATA, toCenterFace);
+    }else{
+      int scaledDuration = NORMAL_ATTACK_DURATION*health;
+      if (!isValueReceivedOnFaceExpired(awayFace)){
+        setValueSentOnFace((1<<2)+ACK_IDLE, awayFace);
       }
+      setValueSentOnFace((1<<2)+ACK_IDLE, toCenterFace);
+      attackTypeCounter = 0;
+      mainTimer.set(scaledDuration*team1AndOpponentTotal);
+      stepRange = team1AndOpponentTotal-1;
+      stepTimer.set(scaledDuration);
+      isAttacking = true;
     }
   }
   
@@ -79,10 +81,6 @@ void loop() {
   if (buttonMultiClicked() && !hasWoken()){
     setUpGame();
   }
-
-//  if (buttonDoubleClicked()){
-//    sendToggle(toCenterFace, 7, true);
-//  }
 
   if (buttonLongPressed() && !hasWoken() && isActive){
     //begin test if game can start
@@ -97,14 +95,14 @@ void loop() {
   //**START Animations**
   if (isHit){
     if(mainTimer.isExpired()){
-      mainTimer.set(ATTACK_ANIM_DURATION*2);
+      mainTimer.set(ANIM_DURATION_MID);
     }
     gameAnim((holdData&4)==4?RED:ORANGE);
   }
   
   if (isError){
     if(mainTimer.isExpired()){
-      mainTimer.set(ATTACK_ANIM_DURATION*2);
+      mainTimer.set(ANIM_DURATION_MID);
       attackTypeCounter -=1;
     }
     gameAnim(RED);
@@ -115,7 +113,7 @@ void loop() {
   }
   if (isHealing){
     if(mainTimer.isExpired()){
-      mainTimer.set(ATTACK_ANIM_DURATION*5);
+      mainTimer.set(ANIM_DURATION_LONG);
       attackTypeCounter -=1;
     }
     gameAnim(GREEN);
@@ -126,6 +124,25 @@ void loop() {
         refreshAllFaces();
     }
   }
+
+ if (playerType == UNASSIGNED){
+   if (mainTimer.isExpired()){
+      //randomizeSetupArray();
+      mainTimer.set(2550);
+   }
+   setUpAnim();
+ }
+
+  if (pulseTimer.isExpired()){
+    if (playerType == SLUG && health >0){
+      pulseTimer.set(PULSE_TIMER_PER_HEALTH*health);
+    }
+  }else{
+    if (playerType == SLUG && !(isWinning || isHit || isError || isHealing || hasWon)){
+      refreshSides();
+    }
+  }
+
 
  if(isWinning){
     if (winPassCount < 3){
@@ -163,83 +180,84 @@ void loop() {
                 setValueSentOnFace(ACK_IDLE, toCenterFace);
                }
              }
-             
            }
            winAnimCount = 0;
        }else{
         winAnimCount+=1;
-        mainTimer.set(ATTACK_ANIM_DURATION/5);
+        mainTimer.set(ANIM_DURATION_SHORT);
        }
       }
     }
  }
   
-  
- if(playerType == MUSHROOM && isAttacking){
-   if (mainTimer.isExpired()){
+  if (turnTimer.isExpired()){
+    if(playerType == MUSHROOM && isAttacking){
       //toggleTurns
       handleNewTurn(false);
       isAttacking = false;
     }
   }
 
- 
- if(isAttacking && playerType != MUSHROOM) {
-   if(mainTimer.isExpired()) {
+  
+  if(isAttacking && playerType != MUSHROOM) {
+    int scaledDuration = NORMAL_ATTACK_DURATION*health;
+    if(mainTimer.isExpired()) {
        if(!hasHealed && attackTypeCounter<2){
          attackTypeCounter +=1;
        }else{
           attackTypeCounter = 0;
        }
        uint8_t critMod = (attackTypeCounter == 2)? 2:1;
-       mainTimer.set((NORMAL_ATTACK_DURATION*health*team1Total)/critMod);
-     }
-     if(secondaryTimer.isExpired()) {
+       mainTimer.set((scaledDuration*team1AndOpponentTotal)/critMod);
+       attackStepBrightness = MAX_BRIGHTNESS;
+       stepRange = team1AndOpponentTotal-1;
+       stepTimer.set((scaledDuration)/critMod);
+    }
+    if(stepTimer.isExpired()) {
       if(stepRange>0) {
-        attackStepBrightness -= (MAX_BRIGHTNESS/team1Total);
+        attackStepBrightness -= (MAX_BRIGHTNESS/team1AndOpponentTotal);
         stepRange -=1;
       }else{
         //start over
         attackStepBrightness = MAX_BRIGHTNESS;
-        stepRange = team1Total-1;
+        stepRange = team1AndOpponentTotal-1;
       }
       uint8_t critMod = (!hasHealed && attackTypeCounter == 2)? 2:1;
-      secondaryTimer.set((NORMAL_ATTACK_DURATION*health)/critMod);
+      stepTimer.set((scaledDuration)/critMod);
     }
-  }
+    setColorOnFace(dim((!hasHealed && attackTypeCounter == 2)?RED:WHITE, attackStepBrightness), toCenterFace);
+ }
 
   if (animCount>0){
-    if (secondaryTimer.isExpired()){
+    if (mainTimer.isExpired()){
       animCount-=1;
-      uint8_t oppositeFace = (startFace+3)%FACE_COUNT;
+      uint8_t oppositeFace = OPPOSITE_FACE(startFace);
       if (animCount==2){
-        setFaceColor(startFace, YELLOW);
-        secondaryTimer.set(ATTACK_ANIM_DURATION);
+        setColorOnFace(YELLOW, startFace);
+        mainTimer.set(ATTACK_ANIM_DURATION);
       }else if(animCount==1){
-        setFaceColor(oppositeFace,YELLOW);
+        setColorOnFace(YELLOW, oppositeFace);
         if (playerType == MUSHROOM){
-          setFaceColor(startFace, GREEN);
+          setColorOnFace(GREEN, startFace);
         }else{
-          setFaceColor(startFace, isActive?LIGHT_BLUE:OFF);
+          setColorOnFace(isActive?ORANGE:OFF, startFace);
         }
-        secondaryTimer.set(ATTACK_ANIM_DURATION);
+        mainTimer.set(ATTACK_ANIM_DURATION);
       }else{
         if (playerType == MUSHROOM){
-          setFaceColor(oppositeFace, RED);
+          setColorOnFace(RED, oppositeFace);
           isAttacking=true;
-          mainTimer.set(2000+(TURN_DURATION_PER_PLAYER*(startFace==awayFace?team1Total:team2Total)));
+          turnTimer.set(2000+(TURN_DURATION_PER_PLAYER*(startFace==awayFace?team1AndOpponentTotal:team2Total)));
         }else{
-          setFaceColor((startFace+3)%FACE_COUNT, isActive?WHITE:OFF);
+          setColorOnFace(isActive?WHITE:OFF, oppositeFace);
         }
         setValueSentOnFace(ACK_IDLE, startFace);
         setValueSentOnFace(holdData, oppositeFace);
       }
     }
   }
- 
- if(isAttacking && playerType != MUSHROOM){
-    setFaceColor(toCenterFace, dim((!hasHealed && attackTypeCounter == 2)?RED:WHITE, attackStepBrightness));
- }
+  
+
 //**END Animations**
 
 //**DATA handler**
@@ -249,7 +267,6 @@ void loop() {
      }
   }
 }
-
 //***Main data switch***
 void parseData(uint8_t data, int faceOfSignal){
     uint8_t inDataMode = data & 3;
@@ -274,11 +291,9 @@ void parseData(uint8_t data, int faceOfSignal){
 
 //***BEGIN Data Handlers***
 void handleIdle(boolean isOtherAttacking, boolean isFromCenter){
-  
   if (isOtherAttacking){
+    isAttacking=false;
     if (playerType != MUSHROOM){
-      isAttacking=false;
-      refreshAllFaces();
       if(isFromCenter){
         if (!isValueReceivedOnFaceExpired(awayFace)){
           setValueSentOnFace((1<<2)+ACK_IDLE, awayFace);
@@ -292,25 +307,29 @@ void handleIdle(boolean isOtherAttacking, boolean isFromCenter){
 }
 
 void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter){
-  setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
+  int pushFace = isFromCenter?awayFace:toCenterFace;
+  int sameFace = isFromCenter?toCenterFace:awayFace;
+  pulseTimer.set(0);
   if (playerType == MUSHROOM){
       if (headCount == 0){
         //handle win condition
-        setFaceColor(isFromCenter?awayFace:toCenterFace, WHITE);
-        sendToggle(isFromCenter?awayFace:toCenterFace, 7, true);
+        setColorOnFace(WHITE, pushFace);
+        sendToggle(pushFace, 7, true);
+      }else{
+        setValueSentOnFace(ACK_IDLE, toCenterFace);
+        setValueSentOnFace(ACK_IDLE, awayFace);
       }
     }else{
       if (aWinnerIsYou){
           holdData = (1<<2)+TOGGLE_TURN;
-          startFace=isFromCenter?toCenterFace:awayFace;
-          isWinning = true;
+          startFace=sameFace;
+          isWinning = hasWon = true;
           winAnimCount =0;
-          setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
+          setValueSentOnFace(ACK_IDLE, sameFace);
       }else{
         if (isFromCenter){
-          
           //Using team1Total on non-mushroom to track enemy team size
-          team1Total = headCount;
+          team1AndOpponentTotal = headCount;
           if(health>0){
             isActive = !isActive;
           }else{
@@ -319,7 +338,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
           refreshAllFaces();
           if (!isValueReceivedOnFaceExpired(awayFace)){
             sendToggle(awayFace, headCount, false);
-            //setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
+            setValueSentOnFace(ACK_IDLE, sameFace);
           }else{
             sendToggle(toCenterFace, (health>0)?1:0, false);
           }
@@ -329,7 +348,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
               headCount+=1;
           }
           sendToggle(toCenterFace, headCount, false);
-          //setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
+          setValueSentOnFace(ACK_IDLE, sameFace);
        }
     }
   }
@@ -341,25 +360,22 @@ void sendToggle(int face, uint8_t aliveCount, bool aWinnerIsYou){
 }
 
 void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
-  setValueSentOnFace(ACK_IDLE, faceOfSignal);
-  int oppositeFace = (faceOfSignal+3)%FACE_COUNT;
   if (onWayOut){
     toCenterFace = faceOfSignal;
-    awayFace = oppositeFace;
+    awayFace = OPPOSITE_FACE(faceOfSignal);
   }
- 
   if (playerType == MUSHROOM && !onWayOut){
     
     if (faceOfSignal == awayFace){
-      team1Total = blinkCount;
+      team1AndOpponentTotal = blinkCount;
     }else if (faceOfSignal == toCenterFace){
       team2Total = blinkCount;
     }
-    if (team2Total > 0 && team1Total > 0){
+    if (team2Total > 0 && team1AndOpponentTotal > 0){
         beginGame();
     }
   }else{
-     
+    setValueSentOnFace(ACK_IDLE, faceOfSignal);
     if (onWayOut){
       winPosition = blinkCount;
       setPlayerType(SLUG);
@@ -407,18 +423,27 @@ void handleAttack(int faceOfSignal, uint8_t range, boolean crit){
 //***BEGIN Utils***
 
 void winAnim(){
-  setFaceColor(startFace, (winAnimCount==0||winAnimCount==6)?GREEN:OFF);
-  setFaceColor((startFace+1)%FACE_COUNT, (winAnimCount==1||winAnimCount==5)?GREEN:OFF);
-  setFaceColor((startFace+5)%FACE_COUNT, (winAnimCount==1||winAnimCount==5)?GREEN:OFF);
-  setFaceColor((startFace+2)%FACE_COUNT, (winAnimCount==2||winAnimCount==4)?GREEN:OFF);
-  setFaceColor((startFace+4)%FACE_COUNT, (winAnimCount==2||winAnimCount==4)?GREEN:OFF);
-  setFaceColor((startFace+3)%FACE_COUNT, winAnimCount==3?GREEN:OFF);
+  setColorOnFace((winAnimCount==0||winAnimCount==6)?GREEN:OFF, startFace);
+  setColorOnFace((winAnimCount==1||winAnimCount==5)?GREEN:OFF, CW_FROM_FACE(startFace,1));
+  setColorOnFace((winAnimCount==1||winAnimCount==5)?GREEN:OFF, CCW_FROM_FACE(startFace,1));
+  setColorOnFace((winAnimCount==2||winAnimCount==4)?GREEN:OFF, CW_FROM_FACE(startFace,2));
+  setColorOnFace((winAnimCount==2||winAnimCount==4)?GREEN:OFF, CCW_FROM_FACE(startFace,2));
+  setColorOnFace(winAnimCount==3?GREEN:OFF, OPPOSITE_FACE(startFace));
+}
+
+void setUpAnim(){
+  byte dimmer = (mainTimer.getRemaining()/10);
+  byte dampenedDimmer = sin8_C(dimmer)/2;
+  Color dimmedWhite = dim(WHITE, MAX_BRIGHTNESS - dampenedDimmer/2);
+  setColor(dimmedWhite);
 }
 
 void youWon(){
   winAnimCount = 0;
+  health = 4;
   setColor(GREEN);
   isWinning = false;
+  //hasWon = true;
   winPassCount = 0;
 }
 
@@ -426,34 +451,41 @@ void gameAnim(Color color){
   setColor(dim(color, MAX_BRIGHTNESS - mainTimer.getRemaining()));
 }
 
+void refreshSides(){
+  if (isWinning)return;
+  byte dimmer = (pulseTimer.getRemaining()/10);
+  byte dampenedDimmer = sin8_C(dimmer)/2;
+  Color slimeGreen = makeColorRGB(dampenedDimmer, 255, 0);
+  Color slimeRed = dim(RED, MAX_BRIGHTNESS - (dampenedDimmer));
+  setColorOnFace(health>0?slimeGreen:slimeRed, CW_FROM_FACE(awayFace,1));
+  setColorOnFace(health>1?slimeGreen:slimeRed, CW_FROM_FACE(awayFace,2));
+  setColorOnFace(health>2?slimeGreen:slimeRed, CCW_FROM_FACE(awayFace,1));
+  setColorOnFace(health>3?slimeGreen:slimeRed, CCW_FROM_FACE(awayFace,2));
+}
+
 void refreshAllFaces(){
   isHit=false;
-  
-  setFaceColor((awayFace+1)%FACE_COUNT,health>0?GREEN:RED);
-  setFaceColor((awayFace+2)%FACE_COUNT,health>1?GREEN:RED);
-  setFaceColor((awayFace+4)%FACE_COUNT,health>2?GREEN:RED);
-  setFaceColor((awayFace+5)%FACE_COUNT,health>3?GREEN:RED);
-  
-  setFaceColor(awayFace, isActive?LIGHT_BLUE:OFF);
-  setFaceColor(toCenterFace, isActive?WHITE:OFF);
+  refreshSides();
+  setColorOnFace(isActive?ORANGE:OFF, awayFace);
+  setColorOnFace(isActive?WHITE:OFF, toCenterFace);
 }
 
 void handleNewTurn(boolean isFromSetup){
   team1Turn = !team1Turn;
   if (team1Turn){
     if (!isFromSetup){
-      setValueSentOnFace((team1Total<<3)+TOGGLE_TURN, toCenterFace);
+      setValueSentOnFace((team1AndOpponentTotal<<3)+TOGGLE_TURN, toCenterFace);
     }
     setValueSentOnFace((team2Total<<3)+TOGGLE_TURN, awayFace);
-    setFaceColor(awayFace,GREEN);
-    setFaceColor(toCenterFace,RED);
+    setColorOnFace(GREEN, awayFace);
+    setColorOnFace(RED, toCenterFace);
   }else{
     if (!isFromSetup){
       setValueSentOnFace((team2Total<<3)+TOGGLE_TURN, awayFace);
     }
-    setValueSentOnFace((team1Total<<3)+TOGGLE_TURN, toCenterFace);
-    setFaceColor(awayFace,RED);
-    setFaceColor(toCenterFace, GREEN);
+    setValueSentOnFace((team1AndOpponentTotal<<3)+TOGGLE_TURN, toCenterFace);
+    setColorOnFace(RED, awayFace);
+    setColorOnFace(GREEN, toCenterFace);
   }
 }
 
@@ -468,7 +500,7 @@ void beginGame(){
 void setPlayerType(uint8_t playerClass){
   playerType = playerClass;
   winPassCount = 0;
-  isActive= hasHealed = isAttacking= isHit= isError= isHealing= isWinning = false;
+  isActive= hasHealed = isAttacking= isHit= isError= isHealing= isWinning, hasWon = false;
   switch(playerType){
     case SLUG:
       health = 4;
@@ -482,7 +514,7 @@ void setPlayerType(uint8_t playerClass){
 }
 
 void setUpGame(){
-  team1Total = team2Total = 0;
+  team1AndOpponentTotal = team2Total = 0;
   toCenterFace = awayFace = FACE_COUNT;
   setPlayerType(MUSHROOM);
   FOREACH_FACE(face){

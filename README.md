@@ -1,6 +1,6 @@
 # Welcome to SlugFest! 
 
-![slugfest logo](https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Coca-Cola_logo.svg/1280px-Coca-Cola_logo.svg.png)
+![slugfest logo](/images/newbonce.png)
 
 Number of Blinks | Number of Players | Duration 
 ------------ | ------------- | -------------

@@ -1,6 +1,6 @@
 # Welcome to SlugFest! 
 
-![slugfest logo](/images/newbonce.png)
+![slugfest logo](/images/title-logo.png)
 
 Number of Blinks | Number of Players | Duration 
 ------------ | ------------- | -------------
@@ -29,10 +29,10 @@ On your turn you can:
     ![firing image](/images/attack-sequence.png)
     
   * **Attempt a critical shot** (ends your turn when resolved)
-    * Every third sequence of the attack animation will have an orange and MUCH faster sequence that if you **tap once** during it, it will launch a critical heavy blow to your opponent doing TWO points of damage! Be careful as these are much harder to time correctly!
+    * Every third sequence of the attack animation will have an orange and MUCH faster sequence that if you **tap once** during it, it will launch a critical heavy blow to your opponent doing TWO points of damage! (Fig. 4) Be careful as these are much harder to time correctly!
     
   * **Heal your slug** (one Blink)
-    * Each segment of your slug has only 4 total health to begin with. Each point of health is shown as a green light on the sides of your segment, or red if you've taken damage. As you take damage, your attack sequences become much faster and more difficult as your cannons become damaged and less accurate! Not to worry, if one of your segments if heavily damaged (only 1 or 2 health remaining), you can **long press** a piece during your turn to heal them (Fig. 4). This action can only be done ONCE per game, per piece AND this action permanently removes the ability for that particular cannon to fire critical shots. Healing keeps you alive and your gun more accurate, but it prevents it from doing heavy damage, so use this ability with caution. You can only heal on your turn and you must do it before you have 0 health on a piece. Dead pieces can no longer heal.
+    * Each segment of your slug has only 4 total health to begin with. Each point of health is shown as a green light on the sides of your segment, or red if you've taken damage. As you take damage, your attack sequences become much faster and more difficult as your cannons become damaged and less accurate! Not to worry, if one of your segments if heavily damaged (only 1 or 2 health remaining), you can **long press** a piece during your turn to heal them (Fig. 5). This action can only be done ONCE per game, per piece AND this action permanently removes the ability for that particular cannon to fire critical shots. Healing keeps you alive and your gun more accurate, but it prevents it from doing heavy damage, so use this ability with caution. You can only heal on your turn and you must do it before you have 0 health on a piece. Dead pieces can no longer heal.
     
     ![healing image](/images/healing.png)
     

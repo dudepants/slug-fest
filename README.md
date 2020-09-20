@@ -5,7 +5,7 @@
 Number of Blinks | Number of Players | Duration 
 ------------ | ------------- | -------------
 3-15 (7-11 recommended)  | 2 | 5-15 min
-1 Mushroom + up to 7 on either side| 
+1 Mushroom + up to 7 on either side| |scales with team size
 
 ![slugfest story image](https://i.pinimg.com/originals/94/b7/de/94b7deaacf03890dfe442cb4990c0790.jpg)
 

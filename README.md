@@ -10,7 +10,7 @@ Number of Blinks | Number of Players | Duration
 ![slugfest story image](https://i.pinimg.com/originals/94/b7/de/94b7deaacf03890dfe442cb4990c0790.jpg)
 
 ## Background
-In a post-apocalyptic future, slugs have mutated into enormous beasts that humans were quick to tame and weaponize to survive the new wasteland. Luckily the slugs' favorite food, mushrooms also mutated and grew, so these massive mushrooms are often the site of legendary showdowns between fully armed, mutant slug teams! Slug bodies are armed with manned A-Salt cannons, that fire huge rocks of salt at enemy slugs. In SlugFest, you play as a slug squad in one such battle! 
+In a post-apocalyptic future, slugs have mutated into enormous beasts that humans were quick to tame and weaponize to survive the new wasteland. Luckily the slugs' favorite food, mushrooms also mutated and grew, so these massive mushrooms are often the site of legendary showdowns between battle-ready, mutant slug teams! Slug bodies are armed with manned A-Salt cannons, that fire huge rocks of salt at enemy slugs. In SlugFest, you play as a slug squad in one such battle! 
 
 ![slugfest logo](/images/game-piece.png)
 

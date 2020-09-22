@@ -125,13 +125,12 @@ void loop() {
     }
   }
 
- if (playerType == UNASSIGNED){
-   if (mainTimer.isExpired()){
-      //randomizeSetupArray();
-      mainTimer.set(2550);
-   }
-   setUpAnim();
- }
+  if (playerType == UNASSIGNED){
+    if (mainTimer.isExpired()){
+       mainTimer.set(2550);
+    }
+    setUpAnim();
+  }
 
   if (pulseTimer.isExpired()){
     if (playerType == SLUG && health >0){
@@ -142,7 +141,6 @@ void loop() {
       refreshSides();
     }
   }
-
 
  if(isWinning){
     if (winPassCount < 3){
@@ -256,11 +254,10 @@ void loop() {
       }
     }
   }
-  
 
 //**END Animations**
 
-//**DATA handler**
+//**DATA parser**
   FOREACH_FACE(face){
      if (didValueOnFaceChange(face)){
        parseData(getLastValueReceivedOnFace(face), face);
@@ -420,8 +417,8 @@ void handleAttack(int faceOfSignal, uint8_t range, boolean crit){
   startFace=faceOfSignal;
 }
 //**END Data Handlers***
-//***BEGIN Utils***
 
+//***BEGIN Utils***
 void winAnim(){
   setColorOnFace((winAnimCount==0||winAnimCount==6)?GREEN:OFF, startFace);
   setColorOnFace((winAnimCount==1||winAnimCount==5)?GREEN:OFF, CW_FROM_FACE(startFace,1));

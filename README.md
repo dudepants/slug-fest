@@ -1,5 +1,3 @@
-# Welcome to SlugFest! 
-
 ![slugfest logo](/images/title-logo.png)
 
 Number of Blinks | Number of Players | Duration 

@@ -1,6 +1,7 @@
 # Welcome to SlugFest! 
 
 ![slugfest logo](/images/title-logo.png)
+![slugfest logo](/images/game-piece.png)
 
 Number of Blinks | Number of Players | Duration 
 ------------ | ------------- | -------------

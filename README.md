@@ -5,7 +5,7 @@ Number of Blinks | Number of Players | Duration
 3-15 (7-11 recommended)  | 2 | 5-15 min
 1 Mushroom + up to 7 on either side| |scales with team size
 
-![slugfest story image](https://i.pinimg.com/originals/94/b7/de/94b7deaacf03890dfe442cb4990c0790.jpg)
+![slugfest story image](/images/comic-story.png)
 
 ## Background
 In a post-apocalyptic future, slugs have mutated into enormous beasts that humans were quick to tame and weaponize to survive the new wasteland. Luckily the slugs' favorite food, mushrooms also mutated and grew, so these massive mushrooms are often the site of legendary showdowns between battle-ready, mutant slug teams! Slug bodies are armed with manned A-Salt cannons, that fire huge rocks of salt at enemy slugs. In SlugFest, you play as a slug squad in one such battle! 
@@ -42,4 +42,4 @@ On your turn you can:
 ## Winning
 If you manage to reduce each of your opponents segments to 0 health, you win and the spoils of war and the glorious Mushroom are yours for the taking! Tales of this battle will echo through eternity! Also, you can just **triple click** to play again :) 
 
-![victory image](https://i.pinimg.com/originals/94/b7/de/94b7deaacf03890dfe442cb4990c0790.jpg)
+![victory image](/images/victory.png)

@@ -5,7 +5,7 @@ Number of Blinks | Number of Players | Duration
 3-15 (7-11 recommended)  | 2 | 5-15 min
 1 Mushroom + up to 7 on either side| |scales with team size
 
-![slugfest story image](https://i.pinimg.com/originals/94/b7/de/94b7deaacf03890dfe442cb4990c0790.jpg)
+![slugfest story image](/images/comic-story.png)
 
 ## Background
 In a post-apocalyptic future, slugs have mutated into enormous beasts that humans were quick to tame and weaponize to survive the new wasteland. Luckily the slugs' favorite food, mushrooms also mutated and grew, so these massive mushrooms are often the site of legendary showdowns between battle-ready, mutant slug teams! Slug bodies are armed with manned A-Salt cannons, that fire huge rocks of salt at enemy slugs. In SlugFest, you play as a slug squad in one such battle! 
@@ -14,7 +14,6 @@ In a post-apocalyptic future, slugs have mutated into enormous beasts that human
 
 ## Setup
 Line up 3 to 15 blinks in a single file row. (It is recommended to play with an odd number between 7 and 11). Once all the Blinks are white and in a row, they are ready to start. Pick one Blink that you want to be the center of battle, and **triple click** it (Fig. 1). This Blink will serve as your Mushroom and the Blinks on both sides of it are the opposing slug forces. It's recommended that the two teams are the same size, but it's not necessary. Once you have a mushroom set, it will randomly select one team to go first by highlighting and activating them (Fig. 2). The other inactive side will have their cannons dimmed, and their pieces will be disabled until the active team resolves an attack. If you change your mind on where you want the central Mushroom, don't worry, you can reset the game by triple clicking any Blink with pieces on both sides.
-)
 
 ![setup image](/images/setup.png)
 ![setup2 image](/images/game-start.png)
@@ -42,4 +41,4 @@ On your turn you can:
 ## Winning
 If you manage to reduce each of your opponents segments to 0 health, you win and the spoils of war and the glorious Mushroom are yours for the taking! Tales of this battle will echo through eternity! Also, you can just **triple click** to play again :) 
 
-![victory image](https://i.pinimg.com/originals/94/b7/de/94b7deaacf03890dfe442cb4990c0790.jpg)
+![victory image](/images/victory.png)

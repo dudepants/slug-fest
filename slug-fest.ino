@@ -1,3 +1,7 @@
+#ifndef BGA_CUSTOM_BLINKLIB
+#error "This code requires a custom blinklib. See https://github.com/brunoga/blinklib/releases/latest"
+#endif
+
 #define NORMAL_ATTACK_DURATION 150
 #define TURN_DURATION_PER_PLAYER 500
 #define ATTACK_ANIM_DURATION 100

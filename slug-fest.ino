@@ -81,7 +81,7 @@ void loop() {
     }
   }
   
-  //Made this a 3+ click since it's possible to double click on accident during the attack. you wouldn't want to rest on accident.
+  //Made this a 3+ click since it's possible to double click on accident during the attack. you wouldn't want to reset on accident.
   if (buttonMultiClicked() && !hasWoken()){
     setUpGame();
   }
@@ -177,7 +177,7 @@ void loop() {
                if (winPassCount<3){
                   setValueSentOnFace(holdData, awayFace);
                }
-               if (winPassCount==3){
+               else if (winPassCount==3){
                 youWon();
                 setValueSentOnFace(ACK_IDLE, toCenterFace);
                }
@@ -192,12 +192,10 @@ void loop() {
     }
  }
   
-  if (turnTimer.isExpired()){
-    if(playerType == MUSHROOM && isAttacking){
+  if (turnTimer.isExpired() && playerType == MUSHROOM && isAttacking){
       //toggleTurns
       handleNewTurn(false);
       isAttacking = false;
-    }
   }
 
   

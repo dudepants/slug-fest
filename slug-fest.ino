@@ -15,6 +15,11 @@ byte faceOffsetArray[] = { 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5 };
 #define CCW_FROM_FACE(f, amt) faceOffsetArray[6 + (f) - (amt)]
 #define OPPOSITE_FACE(f) CW_FROM_FACE((f), 3)
 
+/*Signals between blinks are either 
+ACK_IDLE - Acknowledge and also allow identical signals to come in the same direction and be counted
+SLUG_DATA - Slug attack data
+TOGGLE_TURN - Changes turns and also checks for a win condition by counting dead pieces
+SETUP_RESET - Initial setup or Resetting the game. Counts the team sizes.*/
 enum dataMode{
   ACK_IDLE = 0,
   SLUG_DATA = 1,
@@ -22,6 +27,7 @@ enum dataMode{
   SETUP_RESET = 3
 };
 
+//pieces are either Mushrooms or Slug segments and everything starts as unassigned.
 enum playerClass{
   MUSHROOM = 0,
   SLUG  = 1,
@@ -36,6 +42,7 @@ uint8_t health = 4;
 uint8_t awayFace, toCenterFace = FACE_COUNT;
 uint8_t animCount = 0, attackTypeCounter;
 
+//held data waiting to send (possibly after animation)
 uint8_t startFace;
 byte holdData;
 
@@ -59,6 +66,7 @@ void loop() {
     //attack sequence
     attackStepBrightness = MAX_BRIGHTNESS;
     if (isAttacking){
+      //fire
       uint8_t range = stepRange;
       isAttacking = false;
       mainTimer.set(0);
@@ -68,6 +76,7 @@ void loop() {
       uint8_t dataLoad = (range<<1)+(crit?1:0);
       setValueSentOnFace((dataLoad<<2)+SLUG_DATA, toCenterFace);
     }else{
+      //begin sequence
       int scaledDuration = NORMAL_ATTACK_DURATION*health;
       if (!isValueReceivedOnFaceExpired(awayFace)){
         setValueSentOnFace((1<<2)+ACK_IDLE, awayFace);
@@ -97,14 +106,13 @@ void loop() {
   //**END Button clicks**
 
   //**START Animations**
+  //state logic
   if (isHit){
     if(mainTimer.isExpired()){
       mainTimer.set(ANIM_DURATION_MID);
     }
     gameAnim((holdData&4)==4?RED:ORANGE);
-  }
-  
-  if (isError){
+  }else if (isError){
     if(mainTimer.isExpired()){
       mainTimer.set(ANIM_DURATION_MID);
       attackTypeCounter -=1;
@@ -114,8 +122,7 @@ void loop() {
         isError= false;
         refreshAllFaces();
     }
-  }
-  if (isHealing){
+  }else if (isHealing){
     if(mainTimer.isExpired()){
       mainTimer.set(ANIM_DURATION_LONG);
       attackTypeCounter -=1;
@@ -127,26 +134,7 @@ void loop() {
         health+=2;
         refreshAllFaces();
     }
-  }
-
-  if (playerType == UNASSIGNED){
-    if (mainTimer.isExpired()){
-       mainTimer.set(2550);
-    }
-    setUpAnim();
-  }
-
-  if (pulseTimer.isExpired()){
-    if (playerType == SLUG && health >0){
-      pulseTimer.set(PULSE_TIMER_PER_HEALTH*health);
-    }
-  }else{
-    if (playerType == SLUG && !(isWinning || isHit || isError || isHealing || hasWon)){
-      refreshSides();
-    }
-  }
-
- if(isWinning){
+  }else if(isWinning){
     if (winPassCount < 3){
       bool endOfLine = (isValueReceivedOnFaceExpired(awayFace) || (winPassCount<2 && startFace == awayFace && winPosition==1));
       if (mainTimer.isExpired()){
@@ -190,44 +178,64 @@ void loop() {
        }
       }
     }
+ }else if (isAttacking){
+    if (turnTimer.isExpired() && playerType == MUSHROOM){
+        //toggleTurns
+        handleNewTurn(false);
+        isAttacking = false;
+    }
+
+    //attack sequence animation
+    if(playerType != MUSHROOM) {
+      int scaledDuration = NORMAL_ATTACK_DURATION*health;
+      if(mainTimer.isExpired()) {
+         if(!hasHealed && attackTypeCounter<2){
+           attackTypeCounter +=1;
+         }else{
+            attackTypeCounter = 0;
+         }
+         uint8_t critMod = (attackTypeCounter == 2)? 2:1;
+         mainTimer.set((scaledDuration*team1AndOpponentTotal)/critMod);
+         attackStepBrightness = MAX_BRIGHTNESS;
+         stepRange = team1AndOpponentTotal-1;
+         stepTimer.set((scaledDuration)/critMod);
+      }
+      if(stepTimer.isExpired()) {
+        if(stepRange>0) {
+          attackStepBrightness -= (MAX_BRIGHTNESS/team1AndOpponentTotal);
+          stepRange -=1;
+        }else{
+          //start over
+          attackStepBrightness = MAX_BRIGHTNESS;
+          stepRange = team1AndOpponentTotal-1;
+        }
+        uint8_t critMod = (!hasHealed && attackTypeCounter == 2)? 2:1;
+        stepTimer.set((scaledDuration)/critMod);
+      }
+      setColorOnFace(dim((!hasHealed && attackTypeCounter == 2)?RED:WHITE, attackStepBrightness), toCenterFace);
+   }
  }
-  
-  if (turnTimer.isExpired() && playerType == MUSHROOM && isAttacking){
-      //toggleTurns
-      handleNewTurn(false);
-      isAttacking = false;
+
+  //pulse while waiting initial setup
+  if (playerType == UNASSIGNED){
+    if (mainTimer.isExpired()){
+       mainTimer.set(2550);
+    }
+    setUpAnim();
   }
 
-  
-  if(isAttacking && playerType != MUSHROOM) {
-    int scaledDuration = NORMAL_ATTACK_DURATION*health;
-    if(mainTimer.isExpired()) {
-       if(!hasHealed && attackTypeCounter<2){
-         attackTypeCounter +=1;
-       }else{
-          attackTypeCounter = 0;
-       }
-       uint8_t critMod = (attackTypeCounter == 2)? 2:1;
-       mainTimer.set((scaledDuration*team1AndOpponentTotal)/critMod);
-       attackStepBrightness = MAX_BRIGHTNESS;
-       stepRange = team1AndOpponentTotal-1;
-       stepTimer.set((scaledDuration)/critMod);
+  //slug body pulsing/breathing
+  if (pulseTimer.isExpired()){
+    if (playerType == SLUG && health >0){
+      pulseTimer.set(PULSE_TIMER_PER_HEALTH*health);
     }
-    if(stepTimer.isExpired()) {
-      if(stepRange>0) {
-        attackStepBrightness -= (MAX_BRIGHTNESS/team1AndOpponentTotal);
-        stepRange -=1;
-      }else{
-        //start over
-        attackStepBrightness = MAX_BRIGHTNESS;
-        stepRange = team1AndOpponentTotal-1;
-      }
-      uint8_t critMod = (!hasHealed && attackTypeCounter == 2)? 2:1;
-      stepTimer.set((scaledDuration)/critMod);
+  }else{
+    if (playerType == SLUG && !(isWinning || isHit || isError || isHealing || hasWon)){
+      refreshSides();
     }
-    setColorOnFace(dim((!hasHealed && attackTypeCounter == 2)?RED:WHITE, attackStepBrightness), toCenterFace);
- }
+  }
 
+  //path of the cannon round
   if (animCount>0){
     if (mainTimer.isExpired()){
       animCount-=1;
@@ -266,6 +274,7 @@ void loop() {
      }
   }
 }
+
 //***Main data switch***
 void parseData(uint8_t data, int faceOfSignal){
     uint8_t inDataMode = data & 3;
@@ -313,6 +322,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
       if (headCount == 0){
         //handle win condition
         setColorOnFace(WHITE, pushFace);
+        //TODO: something at this point doesn't ALWAYS happen how I want it to. The mushroom looks correct, but the win animation doesn't always show.
         sendToggle(pushFace, 7, true);
       }else{
         setValueSentOnFace(ACK_IDLE, toCenterFace);
@@ -403,9 +413,9 @@ void handleAttack(int faceOfSignal, uint8_t range, boolean crit){
         }else{
           isHit=true;
           if (crit && health >1){
-            health -=2;
+            health -=4;//2
           }else if (health >0){
-            health -=1;
+            health -=4;//1
           }else {
             health = 0;
           }

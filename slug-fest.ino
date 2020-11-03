@@ -413,9 +413,9 @@ void handleAttack(int faceOfSignal, uint8_t range, boolean crit){
         }else{
           isHit=true;
           if (crit && health >1){
-            health -=4;//2
+            health -=2;
           }else if (health >0){
-            health -=4;//1
+            health -=1;//change to 4 for easy testing
           }else {
             health = 0;
           }

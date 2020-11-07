@@ -15,6 +15,9 @@ byte faceOffsetArray[] = { 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5 };
 #define CCW_FROM_FACE(f, amt) faceOffsetArray[6 + (f) - (amt)]
 #define OPPOSITE_FACE(f) CW_FROM_FACE((f), 3)
 
+byte messageStoredForAway[] = {0,0,0,0,0,0};
+byte messageStoredForCenter[] = {0,0,0,0,0,0};
+
 /*Signals between blinks are either 
 ACK_IDLE - Acknowledge and also allow identical signals to come in the same direction and be counted
 SLUG_DATA - Slug attack data
@@ -74,14 +77,14 @@ void loop() {
       stepRange = team1AndOpponentTotal-1;
       boolean crit = attackTypeCounter == 2;
       uint8_t dataLoad = (range<<1)+(crit?1:0);
-      setValueSentOnFace((dataLoad<<2)+SLUG_DATA, toCenterFace);
+      queueMessage((dataLoad<<2)+SLUG_DATA, toCenterFace);
     }else{
       //begin sequence
       int scaledDuration = NORMAL_ATTACK_DURATION*health;
       if (!isValueReceivedOnFaceExpired(awayFace)){
-        setValueSentOnFace((1<<2)+ACK_IDLE, awayFace);
+        queueMessage((1<<2)+ACK_IDLE, awayFace);
       }
-      setValueSentOnFace((1<<2)+ACK_IDLE, toCenterFace);
+      queueMessage((1<<2)+ACK_IDLE, toCenterFace);
       attackTypeCounter = 0;
       mainTimer.set(scaledDuration*team1AndOpponentTotal);
       stepRange = team1AndOpponentTotal-1;
@@ -146,10 +149,10 @@ void loop() {
           isWinning = false;
           if (startFace == toCenterFace){
             if (!isValueReceivedOnFaceExpired(awayFace)){
-              setValueSentOnFace(holdData, awayFace);
+              queueMessage(holdData, awayFace);
             }else{
               winPassCount +=1;
-              setValueSentOnFace(holdData, toCenterFace);
+              queueMessage(holdData, toCenterFace);
               if (winPassCount==3){
                 youWon();
               }
@@ -160,14 +163,14 @@ void loop() {
               if (winPassCount==3){
                 youWon();
               }
-               setValueSentOnFace(holdData, toCenterFace);
+               queueMessage(holdData, toCenterFace);
              }else{
                if (winPassCount<3){
-                  setValueSentOnFace(holdData, awayFace);
+                  queueMessage(holdData, awayFace);
                }
                else if (winPassCount==3){
                 youWon();
-                setValueSentOnFace(ACK_IDLE, toCenterFace);
+                queueMessage(ACK_IDLE, toCenterFace);
                }
              }
            }
@@ -259,8 +262,8 @@ void loop() {
         }else{
           setColorOnFace(isActive?WHITE:OFF, oppositeFace);
         }
-        setValueSentOnFace(ACK_IDLE, startFace);
-        setValueSentOnFace(holdData, oppositeFace);
+        queueMessage(ACK_IDLE, startFace);
+        queueMessage(holdData, oppositeFace);
       }
     }
   }
@@ -273,6 +276,8 @@ void loop() {
        parseData(getLastValueReceivedOnFace(face), face);
      }
   }
+
+  processQueue();
 }
 
 //***Main data switch***
@@ -304,14 +309,14 @@ void handleIdle(boolean isOtherAttacking, boolean isFromCenter){
     if (playerType != MUSHROOM){
       if(isFromCenter){
         if (!isValueReceivedOnFaceExpired(awayFace)){
-          setValueSentOnFace((1<<2)+ACK_IDLE, awayFace);
+          queueMessage((1<<2)+ACK_IDLE, awayFace);
         }
       }else{
-        setValueSentOnFace((1<<2)+ACK_IDLE, toCenterFace);
+        queueMessage((1<<2)+ACK_IDLE, toCenterFace);
       }
     }
   }
-  setValueSentOnFace(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
+  queueMessage(ACK_IDLE, isFromCenter?toCenterFace:awayFace);
 }
 
 void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter){
@@ -325,8 +330,8 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
         //TODO: something at this point doesn't ALWAYS happen how I want it to. The mushroom looks correct, but the win animation doesn't always show.
         sendToggle(pushFace, 7, true);
       }else{
-        setValueSentOnFace(ACK_IDLE, toCenterFace);
-        setValueSentOnFace(ACK_IDLE, awayFace);
+        queueMessage(ACK_IDLE, toCenterFace);
+        queueMessage(ACK_IDLE, awayFace);
       }
     }else{
       if (aWinnerIsYou){
@@ -334,7 +339,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
           startFace=sameFace;
           isWinning = hasWon = true;
           winAnimCount =0;
-          setValueSentOnFace(ACK_IDLE, sameFace);
+          queueMessage(ACK_IDLE, sameFace);
       }else{
         if (isFromCenter){
           //Using team1Total on non-mushroom to track enemy team size
@@ -347,7 +352,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
           refreshAllFaces();
           if (!isValueReceivedOnFaceExpired(awayFace)){
             sendToggle(awayFace, headCount, false);
-            setValueSentOnFace(ACK_IDLE, sameFace);
+            queueMessage(ACK_IDLE, sameFace);
           }else{
             sendToggle(toCenterFace, (health>0)?1:0, false);
           }
@@ -357,7 +362,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
               headCount+=1;
           }
           sendToggle(toCenterFace, headCount, false);
-          setValueSentOnFace(ACK_IDLE, sameFace);
+          queueMessage(ACK_IDLE, sameFace);
        }
     }
   }
@@ -365,7 +370,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
 
 void sendToggle(int face, uint8_t aliveCount, bool aWinnerIsYou){
   uint8_t dataLoad = (aliveCount<<1)+(aWinnerIsYou?1:0);
-  setValueSentOnFace((dataLoad<<2)+TOGGLE_TURN, face);
+  queueMessage((dataLoad<<2)+TOGGLE_TURN, face);
 }
 
 void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
@@ -384,19 +389,19 @@ void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
         beginGame();
     }
   }else{
-    setValueSentOnFace(ACK_IDLE, faceOfSignal);
+    queueMessage(ACK_IDLE, faceOfSignal);
     if (onWayOut){
       winPosition = blinkCount;
       setPlayerType(SLUG);
       if (!isValueReceivedOnFaceExpired(awayFace)){
         uint8_t dataLoad = ((blinkCount+1)<<1)+1;
-        setValueSentOnFace((dataLoad<<2)+SETUP_RESET, awayFace);
+        queueMessage((dataLoad<<2)+SETUP_RESET, awayFace);
       }else{
         //pass it back
-        setValueSentOnFace((blinkCount<<3)+SETUP_RESET, toCenterFace);
+        queueMessage((blinkCount<<3)+SETUP_RESET, toCenterFace);
       }
     }else{
-      setValueSentOnFace((blinkCount<<3)+SETUP_RESET, toCenterFace);
+      queueMessage((blinkCount<<3)+SETUP_RESET, toCenterFace);
     }
   }
   
@@ -415,7 +420,7 @@ void handleAttack(int faceOfSignal, uint8_t range, boolean crit){
           if (crit && health >1){
             health -=2;
           }else if (health >0){
-            health -=1;//change to 4 for easy testing
+            health -=1;
           }else {
             health = 0;
           }
@@ -431,6 +436,56 @@ void handleAttack(int faceOfSignal, uint8_t range, boolean crit){
 //**END Data Handlers***
 
 //***BEGIN Utils***
+
+void queueMessage(byte message, int faceIndex){
+  if (faceIndex == awayFace){
+    if (messageStoredForAway[0]==0){
+      messageStoredForAway[0]=1;
+      messageStoredForAway[1]=message;
+    }else if (messageStoredForAway[2]==0){
+      messageStoredForAway[2]=1;
+      messageStoredForAway[3]=message;
+    }else if (messageStoredForAway[4]==0){
+      messageStoredForAway[4]=1;
+      messageStoredForAway[5]=message;
+    }
+  }else if (faceIndex == toCenterFace){
+    if (messageStoredForCenter[0]==0){
+      messageStoredForCenter[0]=1;
+      messageStoredForCenter[1]=message;
+    }else if (messageStoredForCenter[2]==0){
+      messageStoredForCenter[2]=1;
+      messageStoredForCenter[3]=message;
+    }else if (messageStoredForCenter[4]==0){
+      messageStoredForCenter[4]=1;
+      messageStoredForCenter[5]=message;
+    }
+  }
+}
+
+void processQueue(){
+  if (messageStoredForCenter[0]==1){
+    byte message = messageStoredForCenter[1];
+    messageStoredForCenter[0]=messageStoredForCenter[2];
+    messageStoredForCenter[1]=messageStoredForCenter[3];
+    messageStoredForCenter[2]=messageStoredForCenter[4];
+    messageStoredForCenter[3]=messageStoredForCenter[5];
+    messageStoredForCenter[4]=0;
+    messageStoredForCenter[5]=0;
+    setValueSentOnFace(message,toCenterFace);
+  }
+  if (messageStoredForAway[0]==1){
+    byte message = messageStoredForAway[1];
+    messageStoredForAway[0]=messageStoredForAway[2];
+    messageStoredForAway[1]=messageStoredForAway[3];
+    messageStoredForAway[2]=messageStoredForAway[4];
+    messageStoredForAway[3]=messageStoredForAway[5];
+    messageStoredForAway[4]=0;
+    messageStoredForAway[5]=0;
+    setValueSentOnFace(message,awayFace);
+  }
+}
+
 void winAnim(){
   setColorOnFace((winAnimCount==0||winAnimCount==6)?GREEN:OFF, startFace);
   setColorOnFace((winAnimCount==1||winAnimCount==5)?GREEN:OFF, CW_FROM_FACE(startFace,1));
@@ -483,16 +538,16 @@ void handleNewTurn(boolean isFromSetup){
   team1Turn = !team1Turn;
   if (team1Turn){
     if (!isFromSetup){
-      setValueSentOnFace((team1AndOpponentTotal<<3)+TOGGLE_TURN, toCenterFace);
+      queueMessage((team1AndOpponentTotal<<3)+TOGGLE_TURN, toCenterFace);
     }
-    setValueSentOnFace((team2Total<<3)+TOGGLE_TURN, awayFace);
+    queueMessage((team2Total<<3)+TOGGLE_TURN, awayFace);
     setColorOnFace(GREEN, awayFace);
     setColorOnFace(RED, toCenterFace);
   }else{
     if (!isFromSetup){
-      setValueSentOnFace((team2Total<<3)+TOGGLE_TURN, awayFace);
+      queueMessage((team2Total<<3)+TOGGLE_TURN, awayFace);
     }
-    setValueSentOnFace((team1AndOpponentTotal<<3)+TOGGLE_TURN, toCenterFace);
+    queueMessage((team1AndOpponentTotal<<3)+TOGGLE_TURN, toCenterFace);
     setColorOnFace(RED, awayFace);
     setColorOnFace(GREEN, toCenterFace);
   }
@@ -534,7 +589,7 @@ void setUpGame(){
       }else{
         awayFace = face;
       }
-      setValueSentOnFace((3<<2)+SETUP_RESET,face);
+      queueMessage((3<<2)+SETUP_RESET,face);
     }
   }
 }

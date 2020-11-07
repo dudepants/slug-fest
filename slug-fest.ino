@@ -327,7 +327,6 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
       if (headCount == 0){
         //handle win condition
         setColorOnFace(WHITE, pushFace);
-        //TODO: something at this point doesn't ALWAYS happen how I want it to. The mushroom looks correct, but the win animation doesn't always show.
         sendToggle(pushFace, 7, true);
       }else{
         queueMessage(ACK_IDLE, toCenterFace);

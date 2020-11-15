@@ -25,6 +25,8 @@ On your turn you can:
   * **Fire a normal shot** (ends your turn when resolved)
     * **Tapping an active piece once** will initiate the attack sequence. You'll see the cannon barrel change in (white) brightness in a repeating pattern. Each brightness level represents the range you wish to fire on your opponent (the brighter, the further you'll fire). **Tapping once again** during this sequence will launch a normal shot which will do one point of damage to your opponent's slug at that range (Fig. 3). Note, firing on a dead piece will do nothing and give up your turn.
     
+    (NOTE: new image coming soon. This should read "range = 3, range = 2, and range = 1" also, the sequence animation is on 3 faces now, not 1)
+    
     ![firing image](/images/attack-sequence.png)
     
   * **Attempt a critical shot** (ends your turn when resolved)

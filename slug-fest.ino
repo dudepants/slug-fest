@@ -5,7 +5,7 @@
 #define NORMAL_ATTACK_DURATION 150
 #define TURN_DURATION_PER_PLAYER 800
 #define MUSHROOM_GRACE_PERIOD 2000
-#define ATTACK_ANIM_DURATION 100
+#define ATTACK_ANIM_DURATION 150
 #define ANIM_DURATION_SHORT 20
 #define ANIM_DURATION_MID 200
 #define ANIM_DURATION_LONG 500
@@ -52,12 +52,11 @@ byte holdData;
 
 byte team1AndOpponentTotal = 0, team2Total, stepRange = 0;
 byte attackStepBrightness = MAX_BRIGHTNESS;
+uint8_t hitAnimCount = 0;
 
-uint8_t winPassCount = 0, winAnimCount = 0;
-uint8_t winPosition = 0;
-
+uint8_t badFace = 6;
 bool hasHealed;
-bool isActive, isAttacking, isHit, isError, isHealing, isWinning, hasWon, isEndPiece = false;
+bool isActive, isAttacking, isHit, isError, isHealing, isEndPiece = false; 
 bool team1Turn = true;
 
 void setup() {
@@ -65,6 +64,7 @@ void setup() {
 }
 
 void loop() {
+  
   //**BEGIN Button clicks**
   if (buttonSingleClicked() && !hasWoken() && isActive && health >0){
     //attack sequence
@@ -115,11 +115,14 @@ void loop() {
   if (gracePeriodTimer.isExpired()){
     if (isEndPiece){
       if (isValueReceivedOnFaceExpired(toCenterFace)){
-        showError();
+        showErrorOnFace(toCenterFace);
       }
     }else{
-      if (isValueReceivedOnFaceExpired(awayFace) || isValueReceivedOnFaceExpired(toCenterFace)){
-        showError();
+      if (isValueReceivedOnFaceExpired(awayFace)){
+        showErrorOnFace(awayFace);
+      }
+      if (isValueReceivedOnFaceExpired(toCenterFace)){
+        showErrorOnFace(toCenterFace);
       }
     }
     if (playerType==MUSHROOM && (team1AndOpponentTotal == 0 || team2Total == 0)){
@@ -130,16 +133,29 @@ void loop() {
   //state logic
   if (isHit){
     if(mainTimer.isExpired()){
-      mainTimer.set(ANIM_DURATION_MID);
+      mainTimer.set(ANIM_DURATION_SHORT*5);
+      if (hitAnimCount>(((holdData&4)==4)?18:6)){
+        isHit = false;
+        hitAnimCount=0;
+        refreshAllFaces();
+      }else{
+        explosionAnim();
+        hitAnimCount++;
+      }
     }
-    gameAnim((holdData&4)==4?RED:ORANGE);
+    
   }else if (isError){
     if(mainTimer.isExpired()){
       mainTimer.set(ANIM_DURATION_MID);
       attackTypeCounter -=1;
     }
-    gameAnim(RED);
+    if (badFace < 6){
+      faceAnim(RED,badFace);
+    }else{
+      gameAnim(RED);
+    }
     if (attackTypeCounter ==0){
+      badFace = 6;
         isError= false;
         refreshAllFaces();
     }
@@ -155,50 +171,7 @@ void loop() {
         health+=2;
         refreshAllFaces();
     }
-  }else if(isWinning){
-    if (winPassCount < 3){
-      bool endOfLine = (isValueReceivedOnFaceExpired(awayFace) || (winPassCount<2 && startFace == awayFace && winPosition==1));
-      if (mainTimer.isExpired()){
-        if (!endOfLine && winAnimCount == 4){
-          winAnimCount=7;
-        }
-        winAnim();
-       if (winAnimCount == 7){
-          isWinning = false;
-          if (startFace == toCenterFace){
-            if (!isValueReceivedOnFaceExpired(awayFace)){
-              queueMessage(holdData, awayFace);
-            }else{
-              winPassCount +=1;
-              queueMessage(holdData, toCenterFace);
-              if (winPassCount==3){
-                youWon();
-              }
-            }
-          }else{
-            winPassCount +=1;
-             if (winPosition>1){
-              if (winPassCount==3){
-                youWon();
-              }
-               queueMessage(holdData, toCenterFace);
-             }else{
-               if (winPassCount<3){
-                  queueMessage(holdData, awayFace);
-               }
-               else if (winPassCount==3){
-                youWon();
-                queueMessage(ACK_IDLE, toCenterFace);
-               }
-             }
-           }
-           winAnimCount = 0;
-       }else{
-        winAnimCount+=1;
-        mainTimer.set(ANIM_DURATION_SHORT);
-       }
-      }
-    }
+
  }else if (isAttacking){
     if (turnTimer.isExpired() && playerType == MUSHROOM){
         //toggleTurns
@@ -253,7 +226,7 @@ void loop() {
       pulseTimer.set(PULSE_TIMER_PER_HEALTH*health);
     }
   }else{
-    if (playerType == SLUG && !(isWinning || isHit || isError || isHealing || hasWon)){
+    if (playerType == SLUG && !( isHit || isError || isHealing )){//|| hasWonisWinning ||
       refreshSides();
     }
   }
@@ -345,21 +318,15 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
   if (playerType == MUSHROOM){
       if (headCount == 0){
         //handle win condition
+        //replace this with a mushroom anim?
         setColorOnFace(WHITE, pushFace);
         queueMessage(ACK_IDLE, pushFace);
-        sendToggle(pushFace, 7, true);
+        //sendToggle(pushFace, 7, true);
       }else{
         queueMessage(ACK_IDLE, toCenterFace);
         queueMessage(ACK_IDLE, awayFace);
       }
     }else{
-      if (aWinnerIsYou){
-          holdData = (1<<2)+TOGGLE_TURN;
-          startFace=sameFace;
-          isWinning = hasWon = true;
-          winAnimCount =0;
-          queueMessage(ACK_IDLE, sameFace);
-      }else{
         if (isFromCenter){
           //Using team1Total on non-mushroom to track enemy team size
           team1AndOpponentTotal = headCount;
@@ -384,7 +351,6 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
           queueMessage(ACK_IDLE, sameFace);
        }
     }
-  }
 }
 
 void sendToggle(int face, uint8_t aliveCount, bool aWinnerIsYou){
@@ -410,7 +376,7 @@ void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
   }else{
     queueMessage(ACK_IDLE, faceOfSignal);
     if (onWayOut){
-      winPosition = blinkCount;
+      //winPosition = blinkCount;
       setPlayerType(SLUG);
       if (!isValueReceivedOnFaceExpired(awayFace)){
         uint8_t dataLoad = ((blinkCount+1)<<1)+1;
@@ -506,13 +472,62 @@ void processQueue(){
   }
 }
 
-void winAnim(){
-  setColorOnFace((winAnimCount==0||winAnimCount==6)?GREEN:OFF, startFace);
-  setColorOnFace((winAnimCount==1||winAnimCount==5)?GREEN:OFF, CW_FROM_FACE(startFace,1));
-  setColorOnFace((winAnimCount==1||winAnimCount==5)?GREEN:OFF, CCW_FROM_FACE(startFace,1));
-  setColorOnFace((winAnimCount==2||winAnimCount==4)?GREEN:OFF, CW_FROM_FACE(startFace,2));
-  setColorOnFace((winAnimCount==2||winAnimCount==4)?GREEN:OFF, CCW_FROM_FACE(startFace,2));
-  setColorOnFace(winAnimCount==3?GREEN:OFF, OPPOSITE_FACE(startFace));
+void explosionAnim(){
+  setColorOnFace(hitAnimColor(0), startFace);
+  setColorOnFace(hitAnimColor(1), CW_FROM_FACE(startFace,1));
+  setColorOnFace(hitAnimColor(1), CCW_FROM_FACE(startFace,1));
+  setColorOnFace(hitAnimColor(2), CW_FROM_FACE(startFace,2));
+  setColorOnFace(hitAnimColor(2), CCW_FROM_FACE(startFace,2));
+  setColorOnFace(hitAnimColor(3), OPPOSITE_FACE(startFace));
+}
+
+Color hitAnimColor(int tierGroup){
+  switch(hitAnimCount){
+    case 0: return WHITE;
+    case 13:
+    case 1: return (tierGroup == 0)?WHITE:OFF;
+    case 12:
+    case 14:
+    case 2: if (tierGroup == 0){
+        return YELLOW;
+      }else if (tierGroup == 1){
+        return WHITE;
+      }
+      return OFF;
+    case 11:
+    case 15:
+    case 3: if (tierGroup == 0){
+        return ORANGE;
+      }else if (tierGroup == 1){
+        return YELLOW;
+      }else if (tierGroup == 2){
+        return WHITE;
+      }
+      return OFF;
+    case 10:
+    case 16:
+    case 4: if (tierGroup == 0){
+        return OFF;
+      }else if (tierGroup == 1){
+        return ORANGE;
+      }else if (tierGroup == 2){
+        return YELLOW;
+      }
+      return WHITE;
+    case 9:
+    case 17:
+    case 5: if (tierGroup == 2){
+        return ORANGE;
+      }else if (tierGroup == 3){
+        return YELLOW;
+      }
+      return OFF;
+     case 6: 
+     case 18:
+     case 8: return (tierGroup == 3)?ORANGE:OFF;
+     case 7: 
+    default: return OFF;
+  }
 }
 
 void setUpAnim(){
@@ -522,21 +537,16 @@ void setUpAnim(){
   setColor(dimmedWhite);
 }
 
-void youWon(){
-  winAnimCount = 0;
-  health = 4;
-  setColor(GREEN);
-  isWinning = false;
-  //hasWon = true;
-  winPassCount = 0;
-}
-
 void gameAnim(Color color){
   setColor(dim(color, MAX_BRIGHTNESS - mainTimer.getRemaining()));
 }
 
+void faceAnim(Color color, int face){
+  setColorOnFace(dim(color, MAX_BRIGHTNESS - mainTimer.getRemaining()),face);
+}
+
 void refreshSides(){
-  if (isWinning||isAttacking)return;
+  if (isAttacking)return;//isWinning||
   if (playerType == MUSHROOM){
     setColorOnFace(WHITE, CW_FROM_FACE(awayFace,1));
     setColorOnFace(WHITE, CW_FROM_FACE(awayFace,2));
@@ -594,8 +604,8 @@ void beginGame(){
 
 void setPlayerType(uint8_t playerClass){
   playerType = playerClass;
-  winPassCount = 0;
-  isActive= hasHealed = isAttacking= isHit= isError= isHealing= isWinning = isEndPiece = hasWon = false;
+  //winPassCount = 0;
+  isActive= hasHealed = isAttacking= isHit= isError= isHealing = isEndPiece = false; //= isWinning = hasWon
   switch(playerType){
     case SLUG:
       health = 4;
@@ -632,6 +642,12 @@ void setUpGame(){
     isError = true;
     attackTypeCounter = 3;
  }
+
+void showErrorOnFace(int errorFace){
+   isError = true;
+   badFace = errorFace;
+   attackTypeCounter = 3;
+}
 
  void healUp(){
     isHealing = true;

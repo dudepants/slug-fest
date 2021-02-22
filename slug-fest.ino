@@ -3,7 +3,7 @@
 #endif
 
 #define NORMAL_ATTACK_DURATION 150
-#define TURN_DURATION_PER_PLAYER 800
+#define TURN_DURATION_PER_PLAYER 300
 #define MUSHROOM_GRACE_PERIOD 2000
 #define ATTACK_ANIM_DURATION 150
 #define ANIM_DURATION_SHORT 20
@@ -251,7 +251,7 @@ void loop() {
         if (playerType == MUSHROOM){
           setColorOnFace(RED, oppositeFace);
           isAttacking=true;
-          turnTimer.set(2000+(TURN_DURATION_PER_PLAYER*(startFace==awayFace?team1AndOpponentTotal:team2Total)));
+          turnTimer.set( ( ((holdData&4)==4)?1800:600 ) + (TURN_DURATION_PER_PLAYER*( (startFace==awayFace)?(team1AndOpponentTotal+1):(team2Total+1) ) ) );
         }else{
           setColorOnFace(isActive?WHITE:OFF, oppositeFace);
         }

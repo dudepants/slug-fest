@@ -56,8 +56,9 @@ uint8_t hitAnimCount = 0;
 
 uint8_t badFace = 6;
 bool hasHealed;
-bool isActive, isAttacking, isHit, isError, isHealing, isEndPiece = false; 
+bool isActive, isAttacking, isHit, isError, isHealing, hasWon = false, isEndPiece = false; 
 bool team1Turn = true;
+uint8_t winAnimCount= 0;
 
 void setup() {
   setColor(WHITE);
@@ -231,6 +232,17 @@ void loop() {
     }
   }
 
+  if (playerType == MUSHROOM && hasWon){
+    if (mainTimer.isExpired()){
+      if (winAnimCount>20){
+        winAnimCount =0;
+      }
+      munchAnim();
+      winAnimCount++;
+      mainTimer.set(ATTACK_ANIM_DURATION);
+    }
+  }
+
   //path of the cannon round
   if (animCount>0){
     if (mainTimer.isExpired()){
@@ -318,10 +330,11 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
   if (playerType == MUSHROOM){
       if (headCount == 0){
         //handle win condition
-        //replace this with a mushroom anim?
-        setColorOnFace(WHITE, pushFace);
+        hasWon = true;
+        startFace = pushFace;
+        mainTimer.set(ANIM_DURATION_MID);
+        setColor(WHITE);
         queueMessage(ACK_IDLE, pushFace);
-        //sendToggle(pushFace, 7, true);
       }else{
         queueMessage(ACK_IDLE, toCenterFace);
         queueMessage(ACK_IDLE, awayFace);
@@ -481,6 +494,30 @@ void explosionAnim(){
   setColorOnFace(hitAnimColor(3), OPPOSITE_FACE(startFace));
 }
 
+void munchAnim(){
+  setColorOnFace(munchAnimColor(true), startFace);
+  setColorOnFace(munchAnimColor(false), CW_FROM_FACE(startFace,1));
+  setColorOnFace(munchAnimColor(false), CCW_FROM_FACE(startFace,1));
+}
+
+Color munchAnimColor(boolean isTouching){
+  switch(winAnimCount){
+    case 1: 
+    case 2: 
+    case 3: return GREEN;
+    case 0: 
+    case 5: 
+    case 7: 
+    case 9: 
+    case 11: return isTouching?GREEN:WHITE;
+    case 6:
+    case 8: 
+    case 10:
+    case 12:
+    default: return WHITE;
+  }
+}
+
 Color hitAnimColor(int tierGroup){
   switch(hitAnimCount){
     case 0: return WHITE;
@@ -546,7 +583,7 @@ void faceAnim(Color color, int face){
 }
 
 void refreshSides(){
-  if (isAttacking)return;//isWinning||
+  if (isAttacking)return;
   if (playerType == MUSHROOM){
     setColorOnFace(WHITE, CW_FROM_FACE(awayFace,1));
     setColorOnFace(WHITE, CW_FROM_FACE(awayFace,2));
@@ -604,8 +641,7 @@ void beginGame(){
 
 void setPlayerType(uint8_t playerClass){
   playerType = playerClass;
-  //winPassCount = 0;
-  isActive= hasHealed = isAttacking= isHit= isError= isHealing = isEndPiece = false; //= isWinning = hasWon
+  isActive= hasHealed = isAttacking= isHit= isError= isHealing = isEndPiece = false;
   switch(playerType){
     case SLUG:
       health = 4;
@@ -620,6 +656,8 @@ void setPlayerType(uint8_t playerClass){
 
 void setUpGame(){
   team1AndOpponentTotal = team2Total = 0;
+  hasWon = false;
+  winAnimCount = 0;
   toCenterFace = awayFace = FACE_COUNT;
   setPlayerType(MUSHROOM);
   gracePeriodTimer.set(MUSHROOM_GRACE_PERIOD);

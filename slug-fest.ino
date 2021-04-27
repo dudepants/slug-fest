@@ -365,12 +365,12 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
             isActive = false;
           }
           refreshAllFaces();
-          if (!isValueReceivedOnFaceExpired(awayFace)){
+          if (!isValueReceivedOnFaceExpired(awayFace) ){
             sendToggle(awayFace, headCount);
-            queueMessage(ACK_IDLE, sameFace);
           }else{
             sendToggle(toCenterFace, (health>0)?1:0);
           }
+          queueMessage(ACK_IDLE, sameFace);
         }else{
           if(health>0){
               //calculate the numAlive

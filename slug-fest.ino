@@ -56,7 +56,7 @@ uint8_t hitAnimCount = 0;
 
 uint8_t badFace = 6;
 bool hasHealed;
-bool isActive, isAttacking, isHit, isError, isHealing, hasWon = false, isEndPiece = false; 
+bool isActive, isAttacking, isHit, isError, isHealing, hasWon = false, isEndPiece = false, hasFired = false; 
 bool team1Turn = true;
 uint8_t winAnimCount= 0;
 
@@ -67,19 +67,24 @@ void setup() {
 void loop() {
   
   //**BEGIN Button clicks**
-  if (buttonSingleClicked() && !hasWoken() && isActive && health >0){
+  if (buttonSingleClicked() && !hasWoken() && isActive && !hasFired && health >0){
     //attack sequence
     attackStepBrightness = MAX_BRIGHTNESS;
     if (isAttacking){
       //fire
       uint8_t range = stepRange;
       isAttacking = false;
+      hasFired = true;
+      if (!isValueReceivedOnFaceExpired(awayFace)){
+        queueMessage((2<<2)+ACK_IDLE, awayFace);
+      }
       mainTimer.set(0);
       stepTimer.set(0);
       stepRange = team1AndOpponentTotal-1;
       boolean crit = attackTypeCounter == 2;
       uint8_t dataLoad = (range<<1)+(crit?1:0);
       queueMessage((dataLoad<<2)+SLUG_DATA, toCenterFace);
+      
     }else{
       //begin sequence
       int scaledDuration = NORMAL_ATTACK_DURATION*health;
@@ -289,10 +294,11 @@ void parseData(uint8_t data, int faceOfSignal){
     uint8_t inDataMode = data & 3;
     uint8_t dataLoad = data >> 2;
     boolean firstLoadBit = (dataLoad & 1) == 1;
+    boolean secondLoadBit = dataLoad == 2;
     uint8_t restBits = dataLoad >> 1;
     switch(inDataMode){
       case ACK_IDLE:
-        handleIdle(firstLoadBit, faceOfSignal == toCenterFace);
+        handleIdle(firstLoadBit, secondLoadBit, faceOfSignal == toCenterFace);
         break;
       case SLUG_DATA:
         handleAttack(faceOfSignal, restBits, firstLoadBit);
@@ -307,7 +313,7 @@ void parseData(uint8_t data, int faceOfSignal){
 }
 
 //***BEGIN Data Handlers***
-void handleIdle(boolean isOtherAttacking, boolean isFromCenter){
+void handleIdle(boolean isOtherAttacking, boolean someoneFired, boolean isFromCenter){
   if (isOtherAttacking){
     isAttacking=false;
     if (playerType != MUSHROOM){
@@ -317,6 +323,15 @@ void handleIdle(boolean isOtherAttacking, boolean isFromCenter){
         }
       }else{
         queueMessage((1<<2)+ACK_IDLE, toCenterFace);
+      }
+    }
+  }else if (someoneFired){
+    if (playerType != MUSHROOM){
+      hasFired = true;
+      if(isFromCenter){
+        if (!isValueReceivedOnFaceExpired(awayFace)){
+          queueMessage((2<<2)+ACK_IDLE, awayFace);
+        }
       }
     }
   }
@@ -344,30 +359,31 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
           //Using team1Total on non-mushroom to track enemy team size
           team1AndOpponentTotal = headCount;
           if(health>0){
+            hasFired = false;
             isActive = !isActive;
           }else{
             isActive = false;
           }
           refreshAllFaces();
           if (!isValueReceivedOnFaceExpired(awayFace)){
-            sendToggle(awayFace, headCount, false);
+            sendToggle(awayFace, headCount);
             queueMessage(ACK_IDLE, sameFace);
           }else{
-            sendToggle(toCenterFace, (health>0)?1:0, false);
+            sendToggle(toCenterFace, (health>0)?1:0);
           }
         }else{
           if(health>0){
               //calculate the numAlive
               headCount+=1;
           }
-          sendToggle(toCenterFace, headCount, false);
+          sendToggle(toCenterFace, headCount);
           queueMessage(ACK_IDLE, sameFace);
        }
     }
 }
 
-void sendToggle(int face, uint8_t aliveCount, bool aWinnerIsYou){
-  uint8_t dataLoad = (aliveCount<<1)+(aWinnerIsYou?1:0);
+void sendToggle(int face, uint8_t aliveCount){
+  uint8_t dataLoad = (aliveCount<<1);
   queueMessage((dataLoad<<2)+TOGGLE_TURN, face);
 }
 
@@ -425,6 +441,7 @@ void handleAttack(int faceOfSignal, uint8_t range, boolean crit){
           }
         }
       }else{
+        hasFired = true;
         animCount=3;
       }
   }
@@ -641,7 +658,7 @@ void beginGame(){
 
 void setPlayerType(uint8_t playerClass){
   playerType = playerClass;
-  isActive= hasHealed = isAttacking= isHit= isError= isHealing = isEndPiece = false;
+  isActive= hasHealed = isAttacking= isHit= isError= isHealing = isEndPiece = hasFired= false;
   switch(playerType){
     case SLUG:
       health = 4;

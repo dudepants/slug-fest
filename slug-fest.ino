@@ -56,7 +56,7 @@ uint8_t hitAnimCount = 0;
 
 uint8_t badFace = 6;
 bool hasHealed;
-bool isActive, isAttacking, isHit, isError, isHealing, hasWon = false, isEndPiece = false, hasFired = false; 
+bool isActive, isAttacking, isHit, isError, isHealing, hasWon = false, isEndPiece = false, hasFired = false, isSolo = false; 
 bool team1Turn = true;
 uint8_t winAnimCount= 0;
 
@@ -366,11 +366,14 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
           }
           refreshAllFaces();
           if (!isValueReceivedOnFaceExpired(awayFace) ){
+            queueMessage(ACK_IDLE, sameFace);
             sendToggle(awayFace, headCount);
           }else{
             sendToggle(toCenterFace, (health>0)?1:0);
           }
-          queueMessage(ACK_IDLE, sameFace);
+          if (isSolo){
+            queueMessage(ACK_IDLE, sameFace);
+          }
         }else{
           if(health>0){
               //calculate the numAlive
@@ -405,7 +408,6 @@ void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
   }else{
     queueMessage(ACK_IDLE, faceOfSignal);
     if (onWayOut){
-      //winPosition = blinkCount;
       setPlayerType(SLUG);
       if (!isValueReceivedOnFaceExpired(awayFace)){
         uint8_t dataLoad = ((blinkCount+1)<<1)+1;
@@ -413,6 +415,7 @@ void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
       }else{
         //pass it back
         isEndPiece = true;
+        isSolo = blinkCount==1;
         queueMessage((blinkCount<<3)+SETUP_RESET, toCenterFace);
       }
     }else{
@@ -658,7 +661,7 @@ void beginGame(){
 
 void setPlayerType(uint8_t playerClass){
   playerType = playerClass;
-  isActive= hasHealed = isAttacking= isHit= isError= isHealing = isEndPiece = hasFired= false;
+  isActive= hasHealed = isAttacking= isHit= isError= isHealing = isEndPiece = hasFired= isSolo = false;
   switch(playerType){
     case SLUG:
       health = 4;

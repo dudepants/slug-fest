@@ -370,11 +370,15 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
             queueMessage(ACK_IDLE, sameFace);
             sendToggle(awayFace, headCount);
           }else{
+            if (isSolo){
+              queueMessage(ACK_IDLE, sameFace);
+            }
             sendToggle(toCenterFace, (health>0)?1:0);
+            if (isSolo){
+              queueMessage(ACK_IDLE, sameFace);
+            }
           }
-          if (isSolo){
-            queueMessage(ACK_IDLE, sameFace);
-          }
+
         }else{
           if(health>0){
               //calculate the numAlive
@@ -465,9 +469,6 @@ void queueMessage(byte message, int faceIndex){
     }else if (messageStoredForAway[2]==0){
       messageStoredForAway[2]=1;
       messageStoredForAway[3]=message;
-    }else if (messageStoredForAway[4]==0){
-      messageStoredForAway[4]=1;
-      messageStoredForAway[5]=message;
     }
   }else if (faceIndex == toCenterFace){
     if (messageStoredForCenter[0]==0){
@@ -476,9 +477,6 @@ void queueMessage(byte message, int faceIndex){
     }else if (messageStoredForCenter[2]==0){
       messageStoredForCenter[2]=1;
       messageStoredForCenter[3]=message;
-    }else if (messageStoredForCenter[4]==0){
-      messageStoredForCenter[4]=1;
-      messageStoredForCenter[5]=message;
     }
   }
 }
@@ -488,20 +486,16 @@ void processQueue(){
     byte message = messageStoredForCenter[1];
     messageStoredForCenter[0]=messageStoredForCenter[2];
     messageStoredForCenter[1]=messageStoredForCenter[3];
-    messageStoredForCenter[2]=messageStoredForCenter[4];
-    messageStoredForCenter[3]=messageStoredForCenter[5];
-    messageStoredForCenter[4]=0;
-    messageStoredForCenter[5]=0;
+    messageStoredForCenter[2]=0;
+    messageStoredForCenter[3]=0;
     setValueSentOnFace(message,toCenterFace);
   }
   if (messageStoredForAway[0]==1){
     byte message = messageStoredForAway[1];
     messageStoredForAway[0]=messageStoredForAway[2];
     messageStoredForAway[1]=messageStoredForAway[3];
-    messageStoredForAway[2]=messageStoredForAway[4];
-    messageStoredForAway[3]=messageStoredForAway[5];
-    messageStoredForAway[4]=0;
-    messageStoredForAway[5]=0;
+    messageStoredForAway[2]=0;
+    messageStoredForAway[3]=0;
     setValueSentOnFace(message,awayFace);
   }
 }

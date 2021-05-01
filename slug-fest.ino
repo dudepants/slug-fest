@@ -56,7 +56,7 @@ uint8_t hitAnimCount = 0;
 
 uint8_t badFace = 6;
 bool hasHealed;
-bool isActive, isAttacking, isHit, isError, isHealing, hasWon = false, isEndPiece = false, hasFired = false, isSolo = false; 
+bool isActive, isAttacking, isHit, isError, isHealing, hasWon = false, isEndPiece = false, hasFired = false, isSolo = false, isFirstTurn =true; 
 bool team1Turn = true;
 uint8_t winAnimCount= 0;
 
@@ -343,7 +343,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
   int sameFace = isFromCenter?toCenterFace:awayFace;
   pulseTimer.set(0);
   if (playerType == MUSHROOM){
-      if (headCount == 0){
+      if (headCount == 0 && !isFirstTurn){
         //handle win condition
         hasWon = true;
         startFace = pushFace;
@@ -351,6 +351,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
         setColor(WHITE);
         queueMessage(ACK_IDLE, pushFace);
       }else{
+        isFirstTurn = false;
         queueMessage(ACK_IDLE, toCenterFace);
         queueMessage(ACK_IDLE, awayFace);
       }
@@ -678,6 +679,7 @@ void setUpGame(){
   team1AndOpponentTotal = team2Total = 0;
   hasWon = false;
   winAnimCount = 0;
+  isFirstTurn = true;
   toCenterFace = awayFace = FACE_COUNT;
   setPlayerType(MUSHROOM);
   gracePeriodTimer.set(MUSHROOM_GRACE_PERIOD);

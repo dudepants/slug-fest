@@ -4,11 +4,12 @@
 
 #define NORMAL_ATTACK_DURATION 150
 #define TURN_DURATION_PER_PLAYER 300
-#define MUSHROOM_GRACE_PERIOD 2000
+#define MUSHROOM_GRACE_PERIOD 1500
 #define ATTACK_ANIM_DURATION 150
 #define ANIM_DURATION_SHORT 20
 #define ANIM_DURATION_MID 200
 #define ANIM_DURATION_LONG 500
+#define COMM_DELAY 50
 #define PULSE_TIMER_PER_HEALTH 637
 
 byte faceOffsetArray[] = { 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5 };
@@ -39,7 +40,7 @@ enum playerClass{
 };
 
 //some of these run simulataneously (plus consolodating doesn't seem to help memory much)
-Timer pulseTimer, turnTimer, mainTimer, stepTimer, gracePeriodTimer;
+Timer pulseTimer, turnTimer, mainTimer, stepTimer, gracePeriodTimer, delayTimer;
 
 uint8_t playerType = UNASSIGNED;
 uint8_t health = 4;
@@ -119,7 +120,7 @@ void loop() {
 
 
   if (gracePeriodTimer.isExpired()){
-    if (isEndPiece){
+    if (isEndPiece||isSolo){
       if (isValueReceivedOnFaceExpired(toCenterFace)){
         showErrorOnFace(toCenterFace);
       }
@@ -232,7 +233,7 @@ void loop() {
       pulseTimer.set(PULSE_TIMER_PER_HEALTH*health);
     }
   }else{
-    if (playerType == SLUG && !( isHit || isError || isHealing )){//|| hasWonisWinning ||
+    if (playerType == SLUG && !( isHit || isError || isHealing )){
       refreshSides();
     }
   }
@@ -268,7 +269,7 @@ void loop() {
         if (playerType == MUSHROOM){
           setColorOnFace(RED, oppositeFace);
           isAttacking=true;
-          turnTimer.set( ( ((holdData&4)==4)?1800:600 ) + (TURN_DURATION_PER_PLAYER*( (startFace==awayFace)?(team1AndOpponentTotal+1):(team2Total+1) ) ) );
+          turnTimer.set( ( ((holdData&4)==4)?2100:800 ) + (TURN_DURATION_PER_PLAYER*( (startFace==awayFace)?(team1AndOpponentTotal+1):(team2Total+1) ) ) );
         }else{
           setColorOnFace(isActive?WHITE:OFF, oppositeFace);
         }
@@ -286,7 +287,9 @@ void loop() {
        parseData(getLastValueReceivedOnFace(face), face);
      }
   }
-  processQueue();
+  if(delayTimer.isExpired()){
+    processQueue();
+  }
 }
 
 //***Main data switch***
@@ -370,9 +373,9 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
             queueMessage(ACK_IDLE, sameFace);
             sendToggle(awayFace, headCount);
           }else{
-            if (isSolo){
+            //if (isSolo){
               queueMessage(ACK_IDLE, sameFace);
-            }
+            //}
             sendToggle(toCenterFace, (health>0)?1:0);
             if (isSolo){
               queueMessage(ACK_IDLE, sameFace);
@@ -392,6 +395,7 @@ void handleToggle(uint8_t headCount, boolean aWinnerIsYou, boolean isFromCenter)
 
 void sendToggle(int face, uint8_t aliveCount){
   uint8_t dataLoad = (aliveCount<<1);
+  //queueMessage(ACK_IDLE, face);
   queueMessage((dataLoad<<2)+TOGGLE_TURN, face);
 }
 
@@ -420,7 +424,7 @@ void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
       }else{
         //pass it back
         isEndPiece = true;
-        isSolo = blinkCount==1;
+        isSolo = (blinkCount==1);
         queueMessage((blinkCount<<3)+SETUP_RESET, toCenterFace);
       }
     }else{
@@ -430,7 +434,7 @@ void handleSetupReset(boolean onWayOut, uint8_t blinkCount, int faceOfSignal){
   
 }
 
-void handleAttack(int faceOfSignal, uint8_t range, boolean crit){
+void  handleAttack(int faceOfSignal, uint8_t range, boolean crit){
   if (playerType == MUSHROOM){
         animCount=3;
     }else{
@@ -455,7 +459,7 @@ void handleAttack(int faceOfSignal, uint8_t range, boolean crit){
   }
   uint8_t dataLoad = ((range<<1)+(crit?1:0));
   holdData = (dataLoad<<2)+SLUG_DATA;
-  startFace=faceOfSignal;
+  startFace = faceOfSignal;
 }
 //**END Data Handlers***
 
@@ -488,6 +492,7 @@ void queueMessage(byte message, int faceIndex){
 }
 
 void processQueue(){
+  delayTimer.set(COMM_DELAY);
   if (messageStoredForCenter[0]==1){
     byte message = messageStoredForCenter[1];
     messageStoredForCenter[0]=messageStoredForCenter[2];
@@ -692,11 +697,10 @@ void setUpGame(){
     if (!isValueReceivedOnFaceExpired(face)){
       if (toCenterFace == FACE_COUNT){
         toCenterFace = face;
-        queueMessage(ACK_IDLE,face);
       }else{
         awayFace = face;
-        queueMessage(ACK_IDLE,face);
       }
+      queueMessage(ACK_IDLE,face);
       queueMessage((3<<2)+SETUP_RESET,face);
     }
   }

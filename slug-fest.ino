@@ -9,7 +9,7 @@
 #define ANIM_DURATION_SHORT 20
 #define ANIM_DURATION_MID 200
 #define ANIM_DURATION_LONG 500
-#define COMM_DELAY 50
+#define COMM_DELAY 75
 #define PULSE_TIMER_PER_HEALTH 637
 
 byte faceOffsetArray[] = { 0, 1, 2, 3, 4, 5, 0, 1, 2, 3, 4, 5 };
